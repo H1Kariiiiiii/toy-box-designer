@@ -341,15 +341,21 @@ function createWindow() {
             const app = window.__app;
             app.state.layout = { template: 'farm', brand: 'FARM', product: 'Inertia Tractor', series: 'FARM SERIES', sellTitle: 'Push!', sellSub: 'To power and go', decoOn: true, gridItems: [{ no: '01', name: '拖拉机' }] };
             app.renderLayout();
-            const svg = document.querySelector('#preview-area svg');
-            if (!svg) return 'no-svg';
-            const html = svg.outerHTML;
+            const svgA = document.querySelector('#preview-area svg');
+            const htmlA = svgA ? svgA.outerHTML : '';
+            // 切换国潮模板（gridPos:right 多色）再渲染一次，验证模板扩展
+            app.state.layout.template = 'guochao';
+            app.renderLayout();
+            const svgB = document.querySelector('#preview-area svg');
+            const htmlB = svgB ? svgB.outerHTML : '';
+            const html = htmlA + htmlB;
             return {
               hasBrand: html.indexOf('FARM') >= 0 && html.indexOf('#1c1c1c') >= 0,
               hasSell: html.indexOf('Push!') >= 0 && html.indexOf('To power and go') >= 0,
               hasSeries: html.indexOf('FARM SERIES') >= 0,
               hasGrid: html.indexOf('拖拉机') >= 0 && html.indexOf('01') >= 0,
               hasDeco: html.indexOf('#2e7d32') >= 0,
+              hasGuochao: html.indexOf('#b01f24') >= 0 && html.indexOf('#ffd700') >= 0,
               svgLen: html.length,
             };
           } catch (e) { return 'ERR: ' + e.message; }
@@ -1410,7 +1416,7 @@ function createWindow() {
       sa('apiTest.setActive', dom.apiTest && dom.apiTest.activeShown === true && dom.apiTest.starShown === true);
       sa('apiTest.skipWhenNoKey', dom.apiTest && dom.apiTest.skipShown === true);
       sa('apiTest.failPath', dom.apiTest && dom.apiTest.failOk === true);
-      sa('layoutTpl.render', dom.layoutTpl && dom.layoutTpl.hasBrand === true && dom.layoutTpl.hasSell === true && dom.layoutTpl.hasSeries === true && dom.layoutTpl.hasGrid === true && dom.layoutTpl.hasDeco === true);
+      sa('layoutTpl.render', dom.layoutTpl && dom.layoutTpl.hasBrand === true && dom.layoutTpl.hasSell === true && dom.layoutTpl.hasSeries === true && dom.layoutTpl.hasGrid === true && dom.layoutTpl.hasDeco === true && dom.layoutTpl.hasGuochao === true);
       // 主进程侧：水印请求参数构造（lib/imgRequest.js 三态；buildImageRequest 已由顶部 require）
       {
         const wmBase = { model: 'm', prompt: 'p', size: '1K' };

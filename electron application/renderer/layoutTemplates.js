@@ -2,9 +2,10 @@
 /* layoutTemplates.js - 版面套版模板（中改：多区块版面"填内容即套版"）
  * 纯渲染逻辑：输入版面数据 + front 面板（mm 坐标）→ 区块列表 → SVG parts。
  * 兼容：renderer 环境（ES2017），无外部依赖。
- * 区块类型：bar（品牌条）/ box（产品名/系列标签）/ sell（卖点区）/ grid（系列网格）/ strip（装饰条） */
+ * 区块类型：bar（品牌条）/ box（产品名/系列标签）/ sell（卖点区）/ grid（系列网格）/ strip（装饰条）
+ * 模板布局参数：gridPos（网格位置 right|bottom）、gridCols（列数）、sellH（卖点区高度） */
 
-// 套版模板定义（配色 + 区块参数）
+// 套版模板定义（配色 + 布局参数）
 const LAYOUT_TEMPLATES = {
   farm: { // 农场经典（仿实物：黑底黄字品牌条 + 绿底卖点区 + 三色装饰条）
     label: '农场经典',
@@ -13,14 +14,52 @@ const LAYOUT_TEMPLATES = {
     sellBlock: { bg: '#2e7d32', title: '#ffd400', sub: '#ffffff' },
     productName: { bg: '#ffffff', text: '#1c1c1c' },
     decoStrip: ['#2e7d32', '#4a4a4a', '#111111'],
+    gridPos: 'right', gridCols: 1, sellH: 20,
   },
-  clean: { // 简约白（黑底白字 + 灰阶装饰条）
+  clean: { // 简约白（黑底白字 + 灰阶装饰条，网格横排）
     label: '简约白',
     brandBar: { bg: '#1c1c1c', text: '#ffffff', hMm: 11 },
     seriesTag: { bg: '#1c1c1c', text: '#ffffff' },
     sellBlock: { bg: '#1c1c1c', title: '#ffffff', sub: '#cccccc' },
     productName: { bg: '#ffffff', text: '#1c1c1c' },
     decoStrip: ['#1c1c1c', '#888888', '#eeeeee'],
+    gridPos: 'bottom', gridCols: 2, sellH: 18,
+  },
+  guochao: { // 国潮红金（喜庆中国风）
+    label: '国潮红金',
+    brandBar: { bg: '#b01f24', text: '#ffd700', hMm: 13 },
+    seriesTag: { bg: '#ffd700', text: '#8c1418' },
+    sellBlock: { bg: '#8c1418', title: '#ffd700', sub: '#ffe9c9' },
+    productName: { bg: '#fff8ec', text: '#8c1418' },
+    decoStrip: ['#b01f24', '#ffd700', '#5c0d10'],
+    gridPos: 'right', gridCols: 1, sellH: 20,
+  },
+  mecha: { // 机甲酷黑（炫酷科技风）
+    label: '机甲酷黑',
+    brandBar: { bg: '#12121c', text: '#00d4ff', hMm: 13 },
+    seriesTag: { bg: '#00d4ff', text: '#12121c' },
+    sellBlock: { bg: '#1a1a2e', title: '#00d4ff', sub: '#9fb4c8' },
+    productName: { bg: '#ffffff', text: '#12121c' },
+    decoStrip: ['#00d4ff', '#3a3a5c', '#12121c'],
+    gridPos: 'bottom', gridCols: 2, sellH: 18,
+  },
+  watercolor: { // 清新水彩（柔和马卡龙）
+    label: '清新水彩',
+    brandBar: { bg: '#ff8fab', text: '#ffffff', hMm: 11 },
+    seriesTag: { bg: '#ff8fab', text: '#ffffff' },
+    sellBlock: { bg: '#f4f9fb', title: '#2a6f97', sub: '#5c8a9e' },
+    productName: { bg: '#ffffff', text: '#2a6f97' },
+    decoStrip: ['#ff8fab', '#a8d8ea', '#2a6f97'],
+    gridPos: 'bottom', gridCols: 2, sellH: 18,
+  },
+  forest: { // 森林自然（清新自然风）
+    label: '森林自然',
+    brandBar: { bg: '#2d5a27', text: '#e8f5e9', hMm: 12 },
+    seriesTag: { bg: '#c8a27a', text: '#2d5a27' },
+    sellBlock: { bg: '#3a6b35', title: '#ffd97a', sub: '#e8f5e9' },
+    productName: { bg: '#fdfaf3', text: '#2d5a27' },
+    decoStrip: ['#2d5a27', '#c8a27a', '#1c3a18'],
+    gridPos: 'right', gridCols: 1, sellH: 20,
   },
 };
 
@@ -31,14 +70,16 @@ function escXml(s) {
 /** 区块布局计算：相对 front 面板（mm 坐标，原点=front 左上角）
  * @param {object} layout { template, brand, product, series, sellTitle, sellSub, gridItems:[{no,name}], decoOn }
  * @param {object} front  { x, y, w, h } 主视觉面板（mm）
- * @returns {Array} 区块列表（各 type 的绘制参数）
+ * @returns {Array} 区块列表
  */
 function layoutSections(layout, front) {
   const tpl = LAYOUT_TEMPLATES[layout && layout.template] || LAYOUT_TEMPLATES.farm;
   if (!front || !(front.w > 0) || !(front.h > 0)) return [];
   const W = front.w, D = front.h;
-  const margin = 4; // 内边距 mm
+  const margin = 4;
   const s = [];
+  const sellH = tpl.sellH || 20;
+  const decoH = layout.decoOn && tpl.decoStrip && tpl.decoStrip.length ? 3.5 : 0;
 
   // 顶部品牌条
   if (layout.brand) {
@@ -70,31 +111,44 @@ function layoutSections(layout, front) {
     });
   }
 
-  // 系列网格（右侧竖排，若有；避开顶部品牌/产品名区）
-  if (layout.gridItems && layout.gridItems.length) {
-    const gridW = Math.min(W * 0.32, 58);
-    const gx = W - margin - gridW;
-    const gy = Math.max(y + 2, (layout.brand ? tpl.brandBar.hMm : 0) + 11);
-    const gh = Math.max(20, D - gy - (layout.sellTitle ? 24 : 8) - (layout.decoOn ? 6 : 0));
-    s.push({
-      type: 'grid', x: gx, y: gy, w: gridW, h: gh,
-      items: layout.gridItems, cols: 1,
-      cellBg: 'rgba(255,255,255,0.94)', border: '#1c1c1c', textColor: '#1c1c1c',
-    });
-  }
-
-  // 底部卖点区
+  // 卖点区（底部，网格下方留白）
   if (layout.sellTitle) {
     s.push({
-      type: 'sell', x: 0, y: D - 20, w: W, h: 18,
+      type: 'sell', x: 0, y: D - sellH - decoH, w: W, h: sellH,
       bg: tpl.sellBlock.bg, title: layout.sellTitle, sub: layout.sellSub || '',
       titleColor: tpl.sellBlock.title, subColor: tpl.sellBlock.sub,
       titleSize: 8, subSize: 4.5,
     });
   }
 
+  // 系列网格（位置：right 右侧竖排 / bottom 卖点区上方横排）
+  if (layout.gridItems && layout.gridItems.length) {
+    const cols = Math.max(1, Math.min(3, tpl.gridCols || 1));
+    const rows = Math.ceil(layout.gridItems.length / cols);
+    if (tpl.gridPos === 'bottom') {
+      const gh = Math.min(rows * 14 + 4, 44);
+      const gy = D - sellH - decoH - gh - 2;
+      const gw = W - margin * 2;
+      s.push({
+        type: 'grid', x: margin, y: gy, w: gw, h: gh,
+        items: layout.gridItems, cols: cols,
+        cellBg: 'rgba(255,255,255,0.94)', border: '#1c1c1c', textColor: '#1c1c1c',
+      });
+    } else { // right：右侧竖排
+      const gridW = Math.min(W * 0.32, 58);
+      const gx = W - margin - gridW;
+      const gy = Math.max(y + 2, (layout.brand ? tpl.brandBar.hMm : 0) + 11);
+      const gh = Math.max(20, D - gy - sellH - decoH - 8);
+      s.push({
+        type: 'grid', x: gx, y: gy, w: gridW, h: gh,
+        items: layout.gridItems, cols: 1,
+        cellBg: 'rgba(255,255,255,0.94)', border: '#1c1c1c', textColor: '#1c1c1c',
+      });
+    }
+  }
+
   // 底部装饰条纹
-  if (layout.decoOn && tpl.decoStrip.length) {
+  if (layout.decoOn && tpl.decoStrip && tpl.decoStrip.length) {
     const n = tpl.decoStrip.length, hh = 3.5;
     tpl.decoStrip.forEach((c, i) => {
       s.push({ type: 'strip', x: (W / n) * i, y: D - hh, w: W / n + 0.5, h: hh, bg: c });
@@ -123,13 +177,17 @@ function drawLayoutSections(parts, sections, px, off) {
       }
     } else if (sec.type === 'grid') {
       const n = sec.items.length;
-      const cellH = Math.min(h / n, 22);
+      const cols = sec.cols || 1;
+      const rows = Math.ceil(n / cols);
+      const cellW = w / cols;
+      const cellH = Math.min(h / rows, 22);
       sec.items.forEach((it, i) => {
-        const cy = y + i * cellH;
-        parts.push(`<rect x="${x}" y="${cy}" width="${w}" height="${cellH - 2}" rx="2" fill="${sec.cellBg}" stroke="${sec.border}" stroke-width="0.8"/>`);
+        const r = Math.floor(i / cols), c = i % cols;
+        const cx = x + c * cellW, cy = y + r * cellH;
+        parts.push(`<rect x="${cx + 1}" y="${cy + 1}" width="${cellW - 2}" height="${cellH - 2}" rx="2" fill="${sec.cellBg}" stroke="${sec.border}" stroke-width="0.8"/>`);
         const no = String(it.no || (i + 1));
-        parts.push(`<text x="${x + 6}" y="${cy + cellH * 0.42}" font-size="${px(3.6)}" font-weight="bold" fill="${sec.textColor}">${escXml(no)}</text>`);
-        parts.push(`<text x="${x + w - 4}" y="${cy + cellH * 0.42}" text-anchor="end" font-size="${px(3.6)}" fill="${sec.textColor}">${escXml(it.name || '')}</text>`);
+        parts.push(`<text x="${cx + 5}" y="${cy + cellH * 0.42}" font-size="${px(3.6)}" font-weight="bold" fill="${sec.textColor}">${escXml(no)}</text>`);
+        parts.push(`<text x="${cx + cellW - 4}" y="${cy + cellH * 0.42}" text-anchor="end" font-size="${px(3.6)}" fill="${sec.textColor}">${escXml(it.name || '')}</text>`);
       });
     } else if (sec.type === 'strip') {
       parts.push(`<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${sec.bg}"/>`);
