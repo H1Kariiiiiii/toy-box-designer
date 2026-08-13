@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'" />
+  <title>玩具包装盒设计助手</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo" aria-hidden="true"><svg viewBox="0 0 256 256" width="26" height="26"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff9a5c"/><stop offset="1" stop-color="#f56f2e"/></linearGradient></defs><rect x="8" y="8" width="240" height="240" rx="56" fill="url(#lg)"/><polygon points="128,96 176,120 128,144 80,120" fill="#fff6ee" stroke="#ffd9bf" stroke-width="4" stroke-linejoin="round"/><polygon points="80,120 176,120 176,200 80,200" fill="#ffffff" stroke="#ffd9bf" stroke-width="4" stroke-linejoin="round"/><polygon points="176,120 224,96 224,176 176,200" fill="#ffc49b" stroke="#f5a16a" stroke-width="4" stroke-linejoin="round"/><line x1="80" y1="120" x2="128" y2="144" stroke="#f5b98c" stroke-width="4"/><path d="M112,52 L116.5,80 L144,84.5 L116.5,89 L112,117 L107.5,89 L80,84.5 L107.5,80 Z" fill="#3d7bf0" stroke="#ffffff" stroke-width="4" stroke-linejoin="round"/></svg></div>
+      <div>
+        <h1>玩具包装盒设计助手</h1>
+        <p>澄海玩具 · 设计部</p>
+      </div>
+    </div>
+    <nav class="tabs">
+      <button class="tab active" data-page="design">🎨 设计</button>
+      <button class="tab" data-page="preview">📦 预览</button>
+      <button class="tab" data-page="box">📐 盒型</button>
+      <button class="tab" data-page="compliance">🛡 合规</button>
+      <button class="tab" data-page="qc">🔍 质检</button>
+      <button class="tab" data-page="history">🗂 历史</button>
+      <button class="tab" data-page="settings">⚙️ 设置</button>
+      <button class="tab" data-page="help">📖 教程</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- ==================== 页签：设计 ==================== -->
+    <section class="page active" id="page-design">
+      <div class="design-grid">
+        <div class="design-left">
+          <section class="panel request">
+            <h2>🎨 需求</h2>
+            <div class="req-grid">
+              <label>产品主题
+                <input id="req-theme" type="text" placeholder="例如：恐龙积木、遥控赛车、拼图" />
+              </label>
+              <label>目标年龄
+                <select id="req-age">
+                  <option value="0-3 岁">0-3 岁</option>
+                  <option value="3-6 岁" selected>3-6 岁</option>
+                  <option value="6-12 岁">6-12 岁</option>
+                  <option value="12+ 岁">12+ 岁</option>
+                </select>
+              </label>
+              <label class="full">风格
+                <input id="req-style" type="text" placeholder="例如：可爱卡通、炫酷机甲、清新水彩、国潮" value="可爱卡通" />
+              </label>
+              <label class="full">附加要求（可选）
+                <input id="req-extra" type="text" placeholder="例如：恐龙要喷火、背景草地蓝天" />
+              </label>
+            </div>
+            <div class="req-grid">
+              <label class="full">📷 参考图（产品照片，图生图）
+                <input id="req-refimage" type="file" accept="image/*" />
+              </label>
+              <label>🎲 画面编号（高级，可留空）
+                <input id="req-seed" type="number" placeholder="例如 42" />
+                <small>留空 = 每次随机出新画面；填数字 = 下次填同一数字可复现同款画面</small>
+              </label>
+              <label>🖼 一次生成几张图
+                <select id="req-count">
+                  <option value="1" selected>1 张（主视觉）</option>
+                  <option value="2">2 张（正面+背面）</option>
+                  <option value="3">3 张（正/背/侧面）</option>
+                  <option value="4">4 张（正/背/侧/顶）</option>
+                  <option value="6">6 张（含展开图/细节）</option>
+                </select>
+              </label>
+            </div>
+            <p class="hint">💡 小提示：画面满意就点「导出」保存；想再出风格一样的，把「画面编号」的数字记下来，下次填回即可</p>
+            <p id="count-hint" class="hint hidden">⚠ 一次生成多张仅 5.0 lite / 4.5 / 4.0 支持（5.0 pro 不支持）</p>
+            <div id="refimage-preview" class="refimage-preview hidden"></div>
+            <label>提示词（自动生成，可手改）
+              <textarea id="req-prompt" rows="3"></textarea>
+            </label>
+            <div class="actions">
+              <button id="btn-generate" class="btn primary">✨ 生成主视觉</button>
+              <button id="btn-reroll" class="btn ghost" title="用同一画面编号重新生成，效果相近可微调">🔄 再来一张类似的</button>
+              <button id="btn-batch" class="btn ghost" title="一次生成几款不同设计，方便对比挑选">⚡ 一次出多个方案</button>
+              <select id="batch-count" class="batch-count" title="一次生成几款不同设计（自动用不同画面编号）">
+                <option value="2">2 款对比</option>
+                <option value="4" selected>4 款对比（推荐）</option>
+                <option value="6">6 款对比</option>
+              </select>
+              <button id="btn-export" class="btn ghost" disabled>⬇ 导出展开图 PNG</button>
+              <button id="btn-pdfx" class="btn ghost" disabled title="PDF/X-3 + CMYK + 3mm 出血，可直接发印刷厂">📄 导出印刷 PDF/X</button>
+              <span id="gs-status" class="gs-status"></span>
+              <label class="check" title="按印刷惯例外扩 3mm 出血位"><input type="checkbox" id="opt-bleed" checked /> 出血 3mm</label>
+              <div class="gen-progress" id="gen-progress" hidden>
+                <div class="gen-progress-bar" id="gen-progress-bar"></div>
+              </div>
+              <span id="gen-status" class="status"></span>
+            </div>
+          </section>
+
+          <section class="panel quick-themes-panel">
+            <h2>⚡ 快捷主题（一键填入）</h2>
+            <div id="quick-themes" class="quick-themes"></div>
+            <p class="hint">点击直接填入「产品主题」，也可搭配目标年龄/风格一起生成。</p>
+          </section>
+
+          <section class="panel steps-panel">
+            <h2>🚀 三步上手</h2>
+            <ol class="steps">
+              <li><b>① 填需求</b>：填产品主题、年龄、风格（可上传产品照片做参考）</li>
+              <li><b>② 生成</b>：点「✨ 生成主视觉」出图；不满意点「🔄 再来一张类似的」或「⚡ 一次出多个方案」</li>
+              <li><b>③ 看效果 / 交付</b>：切到「📦 预览」看展开图与 3D 盒子；回本页点「⬇ 导出展开图 PNG」或「📄 导出印刷 PDF/X」发印刷厂</li>
+            </ol>
+          </section>
+        </div>
+
+        <div class="design-right">
+          <section class="panel result-panel">
+            <h2>🖼 生成结果</h2>
+            <div class="result-wrap">
+              <div id="result-area" class="result-area">
+                <div class="placeholder">输入需求后点击"生成主视觉"<br/>AI 将产出玩具包装主视觉插画</div>
+              </div>
+              <button id="btn-result-prev" class="result-nav" title="上一个（←）" aria-label="上一个">◀</button>
+              <button id="btn-result-next" class="result-nav" title="下一个（→）" aria-label="下一个">▶</button>
+              <div id="result-counter" class="result-counter hidden"></div>
+              <!-- 生成中覆盖层：放在 result-wrap 层，不受 renderResults 重写 result-area 影响 -->
+              <div id="gen-overlay" class="gen-overlay" hidden>
+                <div class="gen-overlay-bar"><div class="gen-progress-bar" id="gen-overlay-bar"></div></div>
+                <div class="gen-overlay-text" id="gen-overlay-text">准备中…</div>
+              </div>
+            </div>
+            <div id="result-thumbs" class="result-thumbs hidden"></div>
+          </section>
+
+          <section class="panel status-panel">
+            <h2>📊 当前配置</h2>
+            <div id="quick-status" class="quick-status">
+              <div class="qs-row"><span>盒型</span><b id="qs-box">—</b></div>
+              <div class="qs-row"><span>盒子尺寸</span><b id="qs-size">—</b></div>
+              <div class="qs-row"><span>出图尺寸</span><b id="qs-img">—</b></div>
+              <div class="qs-row"><span>生成模型</span><b id="qs-model">—</b></div>
+              <div class="qs-row"><span>印刷引擎</span><b id="qs-gs">检测中…</b></div>
+            </div>
+            <p class="hint">去「盒型」「合规」「设置」页修改后，这里实时同步。</p>
+          </section>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 页签：预览 ==================== -->
+    <section class="page" id="page-preview">
+      <div class="preview-stack">
+        <section class="panel preview-box-panel">
+          <h2>📐 当前盒型
+            <button id="btn-goto-box" class="mini-btn" title="切换到「盒型」页调整盒型与尺寸">调整盒型/尺寸 →</button>
+          </h2>
+          <div id="boxTypeMini" class="box-list box-list-mini"></div>
+          <p class="hint" id="box-size-text"></p>
+        </section>
+
+        <section class="panel mockup-panel preview-3d-panel">
+          <h2>🧊 3D mockup 预览 <span class="muted">拖拽旋转 · 滚轮缩放</span></h2>
+          <div id="mockup-area" class="mockup-area mockup-area-flex"></div>
+        </section>
+
+        <section class="panel preview-panel preview-sheet-panel">
+          <h2>📦 展开图预览 <span id="preview-name" class="muted"></span></h2>
+          <div id="preview-area" class="preview-area preview-area-flex">
+            <div class="placeholder">✨ 生成主视觉后，这里自动拼好盒型展开图（刀模线 + 条码 + 合规信息）</div>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <!-- ==================== 页签：盒型 ==================== -->
+    <section class="page" id="page-box">
+      <div class="page-grid">
+        <section class="panel">
+          <h2>📐 盒型选择</h2>
+          <div id="boxTypeList" class="box-list"></div>
+          <p class="hint">盒型决定刀模结构；切换后展开图 / 3D 预览自动更新。</p>
+        </section>
+        <section class="panel">
+          <h2>📏 尺寸（mm）</h2>
+          <div class="size-row">
+            <label>长(mm)<input id="size-w" type="number" value="200" min="20" max="500" /></label>
+            <label>宽(mm)<input id="size-d" type="number" value="130" min="20" max="500" /></label>
+            <label>高(mm)<input id="size-h" type="number" value="60" min="10" max="500" /></label>
+          </div>
+          <p class="hint">改完立即生效：展开图、3D 盒子、导出尺寸同步更新。</p>
+        </section>
+        <section class="panel">
+          <h2>🧾 条码（叠加到展开图）</h2>
+          <div class="size-row">
+            <label>类型
+              <select id="barcode-format">
+                <option value="EAN13" selected>EAN-13（欧盟/通用）</option>
+                <option value="UPC">UPC-A（美国）</option>
+                <option value="CODE128">Code 128（内部）</option>
+              </select>
+            </label>
+            <label>编码
+              <input id="barcode-value" type="text" maxlength="13" placeholder="13 位数字" />
+            </label>
+          </div>
+          <label class="check"><input type="checkbox" id="barcode-enabled" /> 在展开图上绘制条码</label>
+          <div class="size-row" style="margin-top:6px">
+            <label>宽(mm)<input id="barcode-w" type="number" min="10" max="300" placeholder="自动" /></label>
+            <label>高(mm)<input id="barcode-h" type="number" min="5" max="150" placeholder="自动" /></label>
+            <label>水平%<input id="barcode-x" type="number" min="0" max="100" placeholder="50" /></label>
+            <label>垂直%<input id="barcode-y" type="number" min="0" max="100" placeholder="50" /></label>
+          </div>
+          <p class="hint" id="barcode-pos-hint" style="margin-top:2px">宽/高留空=自动适配面板；位置为条码中心在面板内的百分比（50=居中，0=左/上，100=右/下）。</p>
+          <p class="hint" id="barcode-hint" style="display:none"></p>
+          <p class="hint">EAN-13 / UPC 需 GS1 发行的正式号段，此处仅排版示意。</p>
+        </section>
+      </div>
+    </section>
+
+    <!-- ==================== 页签：合规 ==================== -->
+    <section class="page" id="page-compliance">
+      <div class="page-grid">
+        <section class="panel">
+          <h2>🛡 合规检查（目标市场）</h2>
+          <div id="compliance-markets" class="market-list"></div>
+          <div id="compliance-items" class="compliance-items"></div>
+        </section>
+        <section class="panel">
+          <h2>📝 合规信息自动排版</h2>
+          <div class="comp-auto">
+            <label class="check"><input type="checkbox" id="comp-auto" /> 自动排版合规信息到展开图</label>
+            <div class="req-grid">
+              <label>品名<input id="comp-name" type="text" placeholder="如：恐龙积木" /></label>
+              <label>货号<input id="comp-sku" type="text" placeholder="如：T-1001" /></label>
+              <label>材质<input id="comp-material" type="text" placeholder="如：ABS 塑料" /></label>
+              <label>执行标准<input id="comp-standard" type="text" value="GB 6675" /></label>
+              <label class="full">制造商<input id="comp-maker" type="text" placeholder="公司名（可选）" /></label>
+              <label class="full">年龄 / 警告语<input id="comp-warning" type="text" placeholder="如：适合 3 岁以上儿童。内含小零件，谨防误吞" /></label>
+            </div>
+            <p class="hint">自动排入展开图对应面板（天地盖→盖围边、开窗盒→底面、双插盒→背面）；勾选目标市场后自动加 CE / 3C 标志。</p>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <!-- ==================== 页签：质检 ==================== -->
+    <section class="page" id="page-qc">
+      <div class="page-grid">
+        <section class="panel">
+          <h2>🔍 质检</h2>
+          <div class="actions">
+            <button id="btn-qc-run" class="btn ghost" style="padding:6px 12px;font-size:12px">✅ 本地质检</button>
+            <button id="btn-qc-vision" class="btn ghost" style="padding:6px 12px;font-size:12px" title="用视觉模型检查生成图有无文字/水印/畸形">🖼 AI 视觉质检</button>
+          </div>
+          <div id="qc-items" class="qc-items">
+            <div class="hint">导出前自动检查；也可手动运行</div>
+          </div>
+          <p class="hint">本地质检在每次导出时自动运行：主视觉就绪 / 必印信息齐全 / 条码校验位 / 出血 / 文字溢出。AI 视觉质检需在「设置」里配置视觉模型 Key。</p>
+        </section>
+      </div>
+    </section>
+
+    <!-- ==================== 页签：历史 ==================== -->
+    <section class="page" id="page-history">
+      <div class="page-grid">
+        <section class="panel">
+          <h2>🗂 历史方案 <button id="btn-import-scheme" class="mini-btn" title="导入 .toybox.json 方案文件">📥 导入</button></h2>
+          <div id="scheme-list" class="scheme-list">
+            <div class="hint">生成后自动存档，点击可载入复用</div>
+          </div>
+          <p class="hint">方案可导出为 .toybox.json 单文件（内含图片），微信/QQ/U盘发给同事导入即用。</p>
+        </section>
+      </div>
+    </section>
+
+    <!-- ==================== 页签：设置 ==================== -->
+    <section class="page" id="page-settings">
+      <div class="page-grid">
+        <section class="panel">
+          <h2>⚙️ 设置</h2>
+          <div class="profile-bar">
+            <label>当前配置档
+              <select id="cfg-profile"></select>
+            </label>
+            <div class="profile-btns">
+              <button id="btn-profile-new" class="mini-btn" title="新建一套独立的 Key/模型配置">＋ 新建档</button>
+              <button id="btn-profile-del" class="mini-btn" title="删除当前档">🗑 删除档</button>
+            </div>
+            <label>档位名称
+              <input id="cfg-profileName" type="text" placeholder="如：火山方舟（公司）、MiMo（个人）" />
+            </label>
+            <p class="hint">每个档保存独立的 文生图 Key + 视觉质检 Key；生成/质检时使用当前选中的档。</p>
+          </div>
+          <label>API Key
+            <input id="cfg-apiKey" type="password" placeholder="sk-..." autocomplete="off" />
+          </label>
+          <label>模型 ID
+            <input id="cfg-model" type="text" placeholder="doubao-seedream-4-0-250828" />
+          </label>
+          <label>图片生成接口地址
+            <input id="cfg-imageBaseUrl" type="text" list="base-url-presets" placeholder="https://ark.cn-beijing.volces.com/api/v3" />
+            <datalist id="base-url-presets">
+              <option value="https://ark.cn-beijing.volces.com/api/v3">火山方舟（Seedream）</option>
+              <option value="https://api.siliconflow.cn/v1">硅基流动（FLUX/Seedream 等）</option>
+              <option value="https://open.bigmodel.cn/api/paas/v4">智谱（CogView）</option>
+              <option value="https://dashscope.aliyuncs.com/compatible-mode/v1">阿里通义万相</option>
+              <option value="https://api.openai.com/v1">OpenAI（gpt-image-2 / gpt-image-1）</option>
+            </datalist>
+          </label>
+          <label>图片比例
+            <select id="cfg-ratio">
+              <option value="1:1">1:1 方形</option>
+              <option value="16:9">16:9 横屏</option>
+              <option value="9:16">9:16 竖屏</option>
+              <option value="4:3">4:3</option>
+              <option value="3:4">3:4</option>
+              <option value="3:2">3:2</option>
+              <option value="2:3">2:3</option>
+              <option value="21:9">21:9 超宽</option>
+              <option value="custom">自定义像素</option>
+            </select>
+          </label>
+          <label>清晰度
+            <select id="cfg-quality">
+              <option value="720p">720p</option>
+              <option value="1080p">1080p（推荐）</option>
+              <option value="2K">2K（2048 短边）</option>
+              <option value="4K">4K（4096 短边，仅火山 5.0）</option>
+              <option value="custom">自定义像素</option>
+            </select>
+          </label>
+          <label id="cfg-size-row" style="display:none">自定义像素（宽x高）
+            <input id="cfg-size" type="text" placeholder="如 1920x1080 / 1080x1920" />
+          </label>
+          <p class="hint" id="size-preview"></p>
+          <label>AI 水印（生成请求参数，按平台生效）
+            <select id="cfg-watermark">
+              <option value="off">关闭（无可见水印，推荐）</option>
+              <option value="default">跟随服务商（默认，不传参）</option>
+              <option value="on">开启（可见 AI 标识）</option>
+            </select>
+            <small>部分平台仅提示词约束无效，必须传请求参数（火山/硅基用 watermark，OpenAI 用 add_watermark）；「关闭」时同时追加无水印提示词约束。</small>
+          </label>
+          <label>视觉质检模型
+            <input id="cfg-visionModel" type="text" list="vision-model-presets" placeholder="mimo-v2.5（小米 MiMo，默认）" />
+            <datalist id="vision-model-presets">
+              <option value="mimo-v2.5">小米 MiMo（默认）</option>
+              <option value="doubao-1-5-vision-pro-32k-250115">火山方舟 doubao-vision</option>
+              <option value="gpt-4o">OpenAI gpt-4o</option>
+              <option value="glm-4v-plus">智谱 GLM-4V</option>
+              <option value="qwen-vl-max">阿里通义 qwen-vl-max</option>
+              <option value="Qwen/Qwen2.5-VL-72B-Instruct">硅基流动 Qwen2.5-VL</option>
+            </datalist>
+          </label>
+          <label>视觉质检接口地址
+            <input id="cfg-visionBaseUrl" type="text" list="vision-base-url-presets" placeholder="https://api.xiaomimimo.com/v1" />
+            <datalist id="vision-base-url-presets">
+              <option value="https://api.xiaomimimo.com/v1">小米 MiMo（默认）</option>
+              <option value="https://ark.cn-beijing.volces.com/api/v3">火山方舟（doubao-vision）</option>
+              <option value="https://api.openai.com/v1">OpenAI（gpt-4o）</option>
+              <option value="https://open.bigmodel.cn/api/paas/v4">智谱（GLM-4V）</option>
+              <option value="https://dashscope.aliyuncs.com/compatible-mode/v1">阿里通义（qwen-vl）</option>
+              <option value="https://api.siliconflow.cn/v1">硅基流动（Qwen2.5-VL 等）</option>
+            </datalist>
+          </label>
+          <label>视觉质检 API Key
+            <input id="cfg-visionApiKey" type="password" placeholder="必填：填你自己创建的视觉模型 Key" />
+          </label>
+          <button id="btn-saveConfig" class="btn ghost">保存设置</button>
+          <label style="margin-top:10px">界面主题
+            <select id="cfg-theme">
+              <option value="light">浅色（默认）</option>
+              <option value="dark">深色</option>
+              <option value="system">跟随系统</option>
+            </select>
+          </label>
+          <p class="hint" style="margin:4px 0 18px">主题即时生效；「跟随系统」随 Windows 深/浅色设置自动切换，点击「保存设置」后持久化。</p>
+          <div class="test-bar">
+            <button id="btn-testApi" class="btn ghost" title="用上方表单当前填写的 地址+Key 探测接口连通性（GET /models）">🔌 测试连接</button>
+            <button id="btn-setActive" class="btn ghost" title="把当前表单内容保存到当前档，并标记为生成/质检使用中">⭐ 设为使用中</button>
+          </div>
+          <p class="hint" id="api-test-result">测试连接会用表单当前填写的 接口地址 + Key 发起请求（不保存改动）。</p>
+          <p class="hint">Key 只保存在本机配置文件中。</p>
+          <hr class="panel-sep" />
+          <h3>🗑 缓存管理 <small class="muted">（生成图片缓存，清理不影响历史方案库）</small></h3>
+          <div class="cache-bar">
+            <span id="cache-status" class="hint">正在统计…</span>
+            <button id="btn-cache-clean7" class="mini-btn" title="删除 7 天前生成的图片缓存文件">清理 7 天前</button>
+            <button id="btn-cache-cleanAll" class="mini-btn danger" title="删除全部图片缓存文件">清空缓存</button>
+          </div>
+          <p class="hint" id="cache-result"></p>
+        </section>
+      </div>
+    </section>
+
+    <!-- ==================== 页签：教程 ==================== -->
+    <section class="page" id="page-help">
+      <div class="page-grid help-grid">
+        <section class="panel">
+          <h2>📖 使用教程 <span class="muted">给设计部同事的快速上手手册</span></h2>
+          <p class="hint">本工具把「玩具包装盒设计」做成流水线：<b>提需求 → AI 出主视觉 → 自动拼盒型展开图 → 一键导出印刷文件</b>。全程不需要会设计软件，也不需要懂 AI。</p>
+        </section>
+
+        <section class="panel">
+          <h3>🚀 三步快速上手</h3>
+          <div class="help-steps">
+            <div class="help-step"><b>① 填需求</b><span>在「🎨 设计」页填产品主题（例：恐龙积木）、目标年龄、风格，有产品照片可一并上传</span></div>
+            <div class="help-step"><b>② 点生成</b><span>点橙色「✨ 生成主视觉」按钮，等 10~30 秒出图；不满意就点「🔄 再来一张类似的」</span></div>
+            <div class="help-step"><b>③ 看效果、交付</b><span>切到「📦 预览」看 3D 盒子和展开图；满意后回设计页点「⬇ 导出展开图 PNG」或「📄 导出印刷 PDF/X」</span></div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h3>🧭 各页签功能一览</h3>
+          <p class="hint">按工作流程从左到右排列：设计 → 预览 → 盒型 → 合规 → 质检 → 历史 → 设置。</p>
+
+          <div class="help-item">
+            <h4>🎨 设计 —— 第一步：提需求、出主视觉</h4>
+            <img src="tutorial/img/design.png" alt="设计页截图" loading="lazy" />
+            <ul>
+              <li><b>产品主题 / 目标年龄 / 风格</b>：告诉 AI 要画什么、画给谁、什么画风，出图效果跟着这三个走</li>
+              <li><b>附加要求（可选）</b>：补充细节，例如"恐龙要喷火、背景草地蓝天"</li>
+              <li><b>参考图（可选）</b>：上传产品照片，AI 会照着产品画（图生图），推荐先传</li>
+              <li><b>画面编号（高级）</b>：留空=每次随机出新画面；填同一个数字可复现同款画面，看到满意的就记下来</li>
+              <li><b>一次生成几张</b>：默认 1 张主视觉；「⚡ 一次出多个方案」可一次出 4 款对比挑选</li>
+            </ul>
+          </div>
+
+          <div class="help-item">
+            <h4>📦 预览 —— 看 3D 盒子和展开图</h4>
+            <img src="tutorial/img/preview.png" alt="预览页截图" loading="lazy" />
+            <ul>
+              <li><b>3D mockup 预览</b>：鼠标<b>拖拽旋转</b>、<b>滚轮缩放</b>，直观看到盒子长什么样</li>
+              <li><b>展开图预览</b>：自动拼好盒型展开图（刀模线 + 条码 + 合规信息），印刷厂就看这个</li>
+              <li>想换盒型或尺寸？点右上角「调整盒型/尺寸 →」直接跳转</li>
+            </ul>
+          </div>
+
+          <div class="help-item">
+            <h4>📐 盒型 —— 选盒子结构、填尺寸、加条码</h4>
+            <img src="tutorial/img/box.png" alt="盒型页截图" loading="lazy" />
+            <ul>
+              <li><b>盒型选择</b>：天地盖（礼盒感）、开窗盒（展示盒）、双插盒（常规快递盒），点一下即切换，展开图/3D 自动更新</li>
+              <li><b>尺寸（mm）</b>：长、宽、高改完立即生效</li>
+              <li><b>条码</b>：勾选「在展开图上绘制条码」，选类型（EAN-13 欧盟/通用、UPC-A 美国、Code 128 内部）、填编码；位置可调（50=居中）。注意：EAN/UPC 正式销售要用 GS1 发行的号段，这里先排版示意</li>
+            </ul>
+          </div>
+
+          <div class="help-item">
+            <h4>🛡 合规 —— 必印信息与目标市场标志</h4>
+            <img src="tutorial/img/compliance.png" alt="合规页截图" loading="lazy" />
+            <ul>
+              <li><b>目标市场</b>：勾选要卖的地区（如欧盟→加 CE 标志、中国→加 3C 标志），自动印到展开图上</li>
+              <li><b>合规信息自动排版</b>：勾选后填品名、货号、材质、执行标准、制造商、年龄/警告语，自动排到展开图对应面板（天地盖→盖围边、开窗盒→底面、双插盒→背面）</li>
+              <li>出口玩具的 CE 标志建议≥5mm 高，打印要看得清</li>
+            </ul>
+          </div>
+
+          <div class="help-item">
+            <h4>🔍 质检 —— 导出前的自动体检</h4>
+            <img src="tutorial/img/qc.png" alt="质检页截图" loading="lazy" />
+            <ul>
+              <li><b>✅ 本地质检</b>：检查主视觉是否就绪、必印信息是否齐全、条码校验位、出血、文字溢出——导出时自动跑，也可以手动点</li>
+              <li><b>🖼 AI 视觉质检</b>：用视觉模型看生成图有没有文字/水印/畸形（需先在「设置」配好视觉质检 Key，可选）</li>
+            </ul>
+          </div>
+
+          <div class="help-item">
+            <h4>🗂 历史 —— 方案存档与同事互传</h4>
+            <img src="tutorial/img/history.png" alt="历史页截图" loading="lazy" />
+            <ul>
+              <li>每次生成<b>自动存档</b>，点记录即可载入继续改</li>
+              <li>方案可导出为 <b>.toybox.json 单文件（内含图片）</b>，微信/QQ/U 盘发给同事，对方点「📥 导入」即用——换电脑也不怕</li>
+            </ul>
+          </div>
+
+          <div class="help-item">
+            <h4>⚙️ 设置 —— 配置 AI 模型（管理员/IT 同事操作）</h4>
+            <img src="tutorial/img/settings.png" alt="设置页截图" loading="lazy" />
+            <ul>
+              <li><b>API Key</b>：图片生成的模型密钥（火山方舟/硅基流动/智谱等），由管理员统一配置，同事一般不用动</li>
+              <li><b>视觉质检 Key</b>：AI 视觉质检用的模型密钥，可选</li>
+              <li><b>配置档</b>：可建多套（公司/个人），切换即生效；「测试连接」可验证 Key 是否可用</li>
+            </ul>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h3>🔑 自己申请 API Key（没有 Key 时看这里）</h3>
+          <p class="hint">AI 出图调用的是外部平台的付费服务，需要一把「钥匙」（API Key）。公司一般会统一配好；如果还没有，可以自己注册申请，全程约 5~10 分钟。下面步骤以各平台官网实际显示为准。</p>
+          <div class="help-api">
+            <details>
+              <summary><b>通用三步：注册 → 拿 Key → 填进设置</b></summary>
+              <p>① 用手机号注册平台账号，按提示完成<b>实名认证</b>；② 登录控制台，找到「API Key / API 密钥」页面，点<b>创建</b>并<b>复制</b>（一串 sk- 开头的字符）；③ 打开本应用「⚙️ 设置」→ 粘贴到 <b>API Key</b> 输入框 → 选对应的<b>图片生成接口地址</b> → 点「测试连接」，显示成功就能用了。</p>
+            </details>
+            <details>
+              <summary><b>推荐一：硅基流动（注册简单、模型多、有免费模型）</b></summary>
+              <p>打开 <a href="https://cloud.siliconflow.cn" target="_blank" rel="noopener">cloud.siliconflow.cn</a> → 手机号注册并完成实名 → 登录后点头像 →「API 密钥」→ 创建并复制。回应用「设置」：接口地址选「硅基流动」，模型 ID 到平台「模型广场」筛选<b>生图</b>标签看（如 FLUX.1-schnell 等，以页面显示为准）。</p>
+            </details>
+            <details>
+              <summary><b>推荐二：阿里云百炼（阿里系账号，手机号即可）</b></summary>
+              <p>打开 <a href="https://bailian.console.aliyun.com" target="_blank" rel="noopener">bailian.console.aliyun.com</a> → 手机号注册/登录 → 按提示完成<b>个人实名</b> → 控制台左侧「API Key」→ 创建并复制。回应用「设置」：接口地址选「阿里通义万相」；如果测试不通，按控制台「业务空间」里显示的 OpenAI 兼容地址填写。</p>
+            </details>
+            <details>
+              <summary><b>推荐三：火山方舟（字节跳动出品，Seedream 模型出图质量好）</b></summary>
+              <p>打开 <a href="https://console.volcengine.com/ark" target="_blank" rel="noopener">console.volcengine.com/ark</a> → 手机号注册并完成<b>实名认证</b> → 控制台「API Key 管理」→ 创建并复制。回应用「设置」：接口地址选「火山方舟」，模型 ID 以控制台「模型广场」为准（如 doubao-seedream 系列）。</p>
+            </details>
+            <details>
+              <summary><b>其他平台：智谱 / OpenAI</b></summary>
+              <p><b>智谱</b>：<a href="https://bigmodel.cn" target="_blank" rel="noopener">bigmodel.cn</a> 注册 →「用户中心 → API Keys」创建 → 接口地址选「智谱」，模型填 cogview 系列。<br/>
+              <b>OpenAI</b>：<a href="https://platform.openai.com" target="_blank" rel="noopener">platform.openai.com</a> 注册需要海外手机号和海外支付方式，国内同事一般不建议；如需使用，在「API keys」页创建，接口地址选「OpenAI」。</p>
+            </details>
+          </div>
+          <p class="hint" style="color:var(--danger,#e5484d)">⚠️ 注意：API Key 就是钱——每次出图会消耗账号余额，<b>不要把 Key 发给别人</b>；不用了可在平台控制台删除或停用。</p>
+        </section>
+
+        <section class="panel">
+          <h3>❓ 常见问题</h3>
+          <div class="help-faq">
+            <details><summary><b>点「生成主视觉」一直转圈不出图？</b></summary>
+              <p>多半是 API Key 没配或失效：让管理员在「⚙️ 设置」里填好 Key 并点「测试连接」。也可能是网络问题，稍后再试。</p>
+            </details>
+            <details><summary><b>生成结果不满意怎么办？</b></summary>
+              <p>点「🔄 再来一张类似的」换一张；或改风格/附加要求重新生成；也可以用「⚡ 一次出多个方案」一次出 4 款对比挑。</p>
+            </details>
+            <details><summary><b>怎么把同一个画面再生成一遍？</b></summary>
+              <p>把当时填的「画面编号」数字记下来，下次填回同一个数字即可复现同款画面（提示词也建议保持一致）。</p>
+            </details>
+            <details><summary><b>印刷文件怎么导出？</b></summary>
+              <p>生成后点「📄 导出印刷 PDF/X」（自带 PDF/X-3 + CMYK + 3mm 出血，可直接发印刷厂）；只做预览/发微信就导「⬇ 导出展开图 PNG」。</p>
+            </details>
+            <details><summary><b>要装 Photoshop、AI 之类软件吗？</b></summary>
+              <p>完全不用。本工具自带全部功能（含 PDF 转换引擎），装好就能用。</p>
+            </details>
+            <details><summary><b>换电脑 / 给同事看方案怎么办？</b></summary>
+              <p>「🗂 历史」页把方案导出为 .toybox.json 文件，发给对方后在「历史」页点「📥 导入」即可，图片和设置都在文件里。</p>
+            </details>
+            <details><summary><b>生成结果存在哪里？</b></summary>
+              <p>导出时自己选保存位置；自动存档在「🗂 历史」页。「⚙️ 设置」里有缓存清理（7 天前/全部），平时不用管。</p>
+            </details>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h3>💡 工作流小贴士</h3>
+          <ul class="help-tips">
+            <li>📷 先传产品照片再生成，画面贴合度明显更高</li>
+            <li>⚡ 批量对比用「一次出多个方案（4 款对比）」，挑中后再精调</li>
+            <li>🛡 出口订单先勾「合规」目标市场，避免漏印 CE/3C 标志</li>
+            <li>🏷 方案命名尽量带客户/品名（如"客户A-恐龙积木"），历史记录多了好找</li>
+          </ul>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <script src="../templates/boxes.js"></script>
+  <script src="compliance.js"></script>
+  <script src="vendor/JsBarcode.all.min.js"></script>
+  <script src="vendor/mockup.bundle.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

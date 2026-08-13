@@ -1,0 +1,10 @@
+{
+  "apiKey": "在这里粘贴你的火山方舟 API Key（sk-开头）",
+  "imageBaseUrl": "https://ark.cn-beijing.volces.com/api/v3",
+  "model": "doubao-seedream-5-0-260128",
+  "size": "2K",
+  "visionProvider": "xiaomi",
+  "visionBaseUrl": "https://api.xiaomimimo.com/v1",
+  "visionModel": "mimo-v2.5",
+  "visionApiKey": "（可选）视觉质检专用 Key，与上方文生图 Key 相互独立"
+}

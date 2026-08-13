@@ -1,0 +1,26 @@
+# ===== 依赖 =====
+node_modules/
+
+# ===== 构建产物（独立版打包输出，可重建） =====
+electron application/release/
+
+# ===== 第三方运行时（Ghostscript，可从官网重新下载） =====
+electron application/resources/gs/
+
+# ===== 插件打包（签名私钥 toybox.p12 绝不可入库；ZXPSignCmd 为第三方工具） =====
+ps-plugin/build/
+
+# ===== Reasonix 工具数据/配置（剪贴板截图、任务日志、权限配置） =====
+.reasonix/
+reasonix.toml
+
+# ===== 随机/临时/系统文件 =====
+.rnd
+*.log
+Thumbs.db
+.DS_Store
+
+# ===== 用户本地配置（含 API Key） =====
+config.json# ===== 插件打包产物（ZXP 可重建） =====
+ps-plugin/dist/
+

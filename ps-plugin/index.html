@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>玩具包装盒设计助手</title>
+  <link rel="stylesheet" href="css/panel.css" />
+</head>
+<body>
+  <!-- 顶栏：应用名 + PS 连接状态 -->
+  <header class="app-header">
+    <span class="app-title">🧸 玩具包装盒设计助手</span>
+    <span id="ps-status" class="ps-status" title="Photoshop 连接状态">未连接</span>
+  </header>
+
+  <!-- 页签 -->
+  <nav class="tabs">
+    <button class="tab active" data-tab="ai">AI 生成</button>
+    <button class="tab" data-tab="template">模板</button>
+    <button class="tab" data-tab="compliance">合规</button>
+    <button class="tab" data-tab="preview">3D</button>
+    <button class="tab" data-tab="settings">设置</button>
+  </nav>
+
+  <main class="pages">
+    <!-- ============ AI 生成（M2：提示词 → 生成 → 缩略图 → 一键入文档） ============ -->
+    <section id="page-ai" class="page active">
+      <div class="field">
+        <label for="ai-prompt">提示词</label>
+        <textarea id="ai-prompt" rows="3" placeholder="描述玩具包装主视觉，例如：可爱恐龙积木玩具包装主视觉插画，蓝天草地，色彩明亮"></textarea>
+      </div>
+
+      <div class="row2">
+        <div class="field">
+          <label for="ai-size">尺寸</label>
+          <select id="ai-size">
+            <option value="1024x1024">1024×1024</option>
+            <option value="1536x1024">1536×1024</option>
+            <option value="1024x1536">1024×1536</option>
+            <option value="2048x2048" selected>2048×2048</option>
+            <option value="2K">2K（Seedream）</option>
+            <option value="4K">4K（Seedream）</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="ai-style">风格</label>
+          <input id="ai-style" type="text" value="可爱卡通" placeholder="可爱卡通、炫酷机甲、水彩、国潮…" />
+        </div>
+      </div>
+
+      <div class="row2">
+        <div class="field">
+          <label for="ai-seed">种子（可选，复现用）</label>
+          <input id="ai-seed" type="number" min="1" max="2147483647" placeholder="例如 42" />
+        </div>
+        <div class="field">
+          <label for="ai-count">数量（组图，1~6）</label>
+          <input id="ai-count" type="number" min="1" max="6" value="1" />
+        </div>
+      </div>
+
+      <details class="collapse">
+        <summary>📐 放入文档位置（mm，已选盒型时自动用 front 面板）</summary>
+        <div class="row4">
+          <label>左 x<input id="ai-x" type="number" value="60" min="0" /></label>
+          <label>上 y<input id="ai-y" type="number" value="60" min="0" /></label>
+          <label>宽<input id="ai-w" type="number" value="200" min="1" /></label>
+          <label>高<input id="ai-h" type="number" value="200" min="1" /></label>
+        </div>
+        <p class="hint">在模板页选好盒型后，「放入文档」自动贴到该盒型 front 面板（内缩 4mm）；未选盒型时用上面的手动值。API 配置见「设置」页。</p>
+      </details>
+
+      <div class="btn-row">
+        <button id="btn-ai-gen" class="btn primary">✨ 生成主视觉</button>
+        <button id="btn-ai-reroll" class="btn" title="用同一画面编号重新生成，效果相近可微调">🔄 再来一张</button>
+        <button id="btn-ai-batch" class="btn" title="连续生成多张不同设计（种子递增）">⚡ 批量</button>
+      </div>
+      <div id="ai-status" class="status"></div>
+
+      <div id="ai-thumbs" class="ai-thumbs"></div>
+      <div id="ai-actions" class="ai-actions" style="display:none">
+        <button id="btn-ai-place" class="btn primary small">📥 放入文档</button>
+        <span id="ai-place-info" class="hint"></span>
+      </div>
+    </section>
+
+    <!-- ============ 模板（M3：盒型展开图 + 刀模线 + 条码） ============ -->
+    <section id="page-template" class="page">
+      <div class="field">
+        <label>盒型</label>
+        <div class="box-types">
+          <button type="button" class="box-type-card active" data-type="tianDiGai"><b>天地盖</b><span>盖身分离，高端礼盒</span></button>
+          <button type="button" class="box-type-card" data-type="kaiChuangHe"><b>开窗盒</b><span>正面开窗展示</span></button>
+          <button type="button" class="box-type-card" data-type="shuangChaHe"><b>双插盒</b><span>左右插舌封口</span></button>
+        </div>
+      </div>
+
+      <div class="row3">
+        <label>长 w(mm)<input id="size-w" type="number" value="200" min="10" max="800" /></label>
+        <label>宽 d(mm)<input id="size-d" type="number" value="130" min="10" max="800" /></label>
+        <label>高 h(mm)<input id="size-h" type="number" value="60" min="10" max="800" /></label>
+      </div>
+
+      <div class="row2">
+        <div class="field">
+          <label for="bleed-mm">出血（mm，0=无）</label>
+          <input id="bleed-mm" type="number" value="3" min="0" max="50" />
+        </div>
+        <div class="field">
+          <label for="doc-name2">文档名称</label>
+          <input id="doc-name2" type="text" value="玩具包装展开图" />
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button id="btn-create-box" class="btn primary">📄 新建展开图文档</button>
+        <button id="btn-draw-die" class="btn" title="按当前盒型绘制刀线/折线/出血框">✂ 画刀模线</button>
+      </div>
+      <div id="box-status" class="status"></div>
+      <p id="box-info" class="hint"></p>
+
+      <details class="collapse">
+        <summary>🔳 条码（货号 → 入文档）</summary>
+        <div class="row2">
+          <div class="field">
+            <label for="barcode-format">格式</label>
+            <select id="barcode-format">
+              <option value="EAN13">EAN-13</option>
+              <option value="UPC">UPC-A</option>
+              <option value="CODE128">Code128</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="barcode-value">货号</label>
+            <input id="barcode-value" type="text" placeholder="EAN-13 13 位 / UPC 12 位" />
+          </div>
+        </div>
+        <div id="barcode-hint" class="hint err"></div>
+        <button id="btn-place-barcode" class="btn">📥 条码入文档（自动适配条码面板）</button>
+      </details>
+
+      <hr />
+
+      <details class="collapse">
+        <summary>🛠 手动创建（M1 兼容：自定义尺寸/图层组）</summary>
+        <div class="field">
+          <label for="doc-w">展开图宽（mm）</label>
+          <input id="doc-w" type="number" value="360" min="1" max="2000" />
+        </div>
+        <div class="field">
+          <label for="doc-h">展开图高（mm）</label>
+          <input id="doc-h" type="number" value="500" min="1" max="2000" />
+        </div>
+        <div class="field">
+          <label for="doc-dpi">分辨率（dpi）</label>
+          <input id="doc-dpi" type="number" value="300" min="72" max="1200" />
+        </div>
+        <div class="field">
+          <label for="doc-name">文档名称</label>
+          <input id="doc-name" type="text" value="玩具包装展开图" />
+        </div>
+        <button id="btn-create-doc" class="btn primary">新建展开图文档</button>
+        <div id="doc-status" class="status"></div>
+
+        <div class="field">
+          <label for="grp-name">图层组名称</label>
+          <input id="grp-name" type="text" value="合规信息" />
+        </div>
+        <button id="btn-add-group" class="btn">创建图层组</button>
+        <div id="grp-status" class="status"></div>
+      </details>
+    </section>
+
+    <!-- ============ 合规（M3：目标市场/字段 → 排入文档） ============ -->
+    <section id="page-compliance" class="page">
+      <div class="field">
+        <label>目标市场（多选）</label>
+        <div id="comp-markets" class="chips"></div>
+      </div>
+
+      <div class="row2">
+        <div class="field"><label for="comp-name">品名</label><input id="comp-name" type="text" placeholder="例如：恐龙积木玩具" /></div>
+        <div class="field"><label for="comp-sku">货号</label><input id="comp-sku" type="text" placeholder="例如：TB-2026-01" /></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label for="comp-material">材质</label><input id="comp-material" type="text" placeholder="例如：ABS 塑料" /></div>
+        <div class="field"><label for="comp-standard">执行标准</label><input id="comp-standard" type="text" placeholder="例如：GB 6675" /></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label for="comp-maker">制造商</label><input id="comp-maker" type="text" placeholder="厂名厂址" /></div>
+        <div class="field"><label for="comp-warning">警告语</label><input id="comp-warning" type="text" placeholder="例如：内含小零件，3 岁以下儿童不宜" /></div>
+      </div>
+
+      <button id="btn-place-comp" class="btn primary">📋 排入文档（合规信息图层组）</button>
+      <div id="comp-status" class="status"></div>
+      <div id="comp-list" class="comp-list"></div>
+    </section>
+
+    <!-- ============ 3D（M4：three.js r128 实时预览 + 截图入文档） ============ -->
+    <section id="page-preview" class="page">
+      <div id="mockup-area" class="mockup-area"></div>
+      <p class="hint">拖拽旋转 · 滚轮缩放；AI 主视觉图自动贴到盒子正面（先在 AI 页生成）</p>
+      <div class="btn-row">
+        <button id="btn-m4-refresh" class="btn">🔄 刷新预览</button>
+        <button id="btn-m4-shot" class="btn primary">📸 截图入文档</button>
+      </div>
+      <details class="collapse">
+        <summary>📐 截图入文档位置（mm）</summary>
+        <div class="row4">
+          <label>左 x<input id="m4-x" type="number" value="60" min="0" /></label>
+          <label>上 y<input id="m4-y" type="number" value="60" min="0" /></label>
+          <label>宽<input id="m4-w" type="number" value="200" min="1" /></label>
+          <label>高<input id="m4-h" type="number" value="200" min="1" /></label>
+        </div>
+        <p class="hint">截图按等比缩放居中放入该区域，图层组「3D 预览」。</p>
+      </details>
+      <div id="m4-status" class="status"></div>
+    </section>
+
+    <!-- ============ 设置（M6：API/默认参数/历史/临时文件/关于） ============ -->
+    <section id="page-settings" class="page">
+      <details class="collapse" open>
+        <summary>🔑 文生图接口（保存到本机，与独立版同 Key 可复用）</summary>
+        <div class="field">
+          <label for="set-apikey">API Key</label>
+          <input id="set-apikey" type="password" placeholder="粘贴文生图 API Key" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label for="set-baseurl">接口地址（OpenAI 兼容）</label>
+          <input id="set-baseurl" type="text" value="https://ark.cn-beijing.volces.com/api/v3" />
+        </div>
+        <div class="field">
+          <label for="set-model">模型 ID</label>
+          <input id="set-model" type="text" value="doubao-seedream-5-0-260128" />
+        </div>
+        <div class="field">
+          <label for="set-size">默认生成尺寸</label>
+          <select id="set-size">
+            <option value="1024x1024">1024×1024</option>
+            <option value="1536x1024">1536×1024</option>
+            <option value="1024x1536">1024×1536</option>
+            <option value="2048x2048" selected>2048×2048</option>
+            <option value="2K">2K（Seedream）</option>
+            <option value="4K">4K（Seedream）</option>
+          </select>
+        </div>
+      </details>
+
+      <details class="collapse" open>
+        <summary>📦 默认文档参数（模板页新建展开图时使用）</summary>
+        <div class="field">
+          <label for="set-boxtype">默认盒型</label>
+          <select id="set-boxtype">
+            <option value="tianDiGai">天地盖</option>
+            <option value="kaiChuangHe">开窗盒</option>
+            <option value="shuangChaHe">双插盒</option>
+          </select>
+        </div>
+        <div class="row3">
+          <label>长 w(mm)<input id="set-bw" type="number" value="200" min="10" max="800" /></label>
+          <label>宽 d(mm)<input id="set-bd" type="number" value="130" min="10" max="800" /></label>
+          <label>高 h(mm)<input id="set-bh" type="number" value="60" min="10" max="800" /></label>
+        </div>
+        <div class="row2">
+          <div class="field"><label for="set-dpi">分辨率（dpi）</label><input id="set-dpi" type="number" value="300" min="72" max="1200" /></div>
+          <div class="field"><label for="set-bleed">出血（mm）</label><input id="set-bleed" type="number" value="3" min="0" max="50" /></div>
+        </div>
+      </details>
+
+      <div class="btn-row">
+        <button id="btn-set-save" class="btn primary">💾 保存设置</button>
+      </div>
+      <div id="set-status" class="status"></div>
+
+      <hr />
+
+      <details class="collapse" open>
+        <summary>🗑 数据管理（生成历史 / 临时文件）</summary>
+        <div class="field">
+          <label>生成历史（上限 200 条，存 %APPDATA%\ToyBoxDesignerPlugin\history\）</label>
+          <div id="set-history" class="hint"></div>
+          <button id="btn-set-clear-history" class="btn">清空生成历史</button>
+        </div>
+        <div class="field">
+          <label>临时图片（入文档用，7 天自动清理）</label>
+          <div id="set-temp" class="hint"></div>
+          <button id="btn-set-clear-temp" class="btn">清理临时文件</button>
+        </div>
+      </details>
+
+      <hr />
+
+      <div class="field">
+        <label>关于</label>
+        <p class="hint">🧸 玩具包装盒设计助手（Photoshop 插件版）v0.6.0 M6<br />
+        功能：AI 主视觉生成 / 盒型展开图刀模 / 合规信息 / 条码 / 3D 预览<br />
+        兼容 PS 2018~2020（CEP 8/9）。配置与生成历史存于本机 %APPDATA%\ToyBoxDesignerPlugin\。</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="app-footer">
+    <span id="version-label">v0.6.0 M6</span>
+    <button id="btn-ping" class="btn small">测试 PS 连接</button>
+  </footer>
+
+  <script src="lib/three.min.js"></script>
+  <script src="lib/OrbitControls.js"></script>
+  <script src="js/CSInterface.js"></script>
+  <script src="js/psbridge.js"></script>
+  <script src="js/templates.js"></script>
+  <script src="js/compliance.js"></script>
+  <script src="js/vendor/JsBarcode.all.min.js"></script>
+  <script src="js/barcode.js"></script>
+  <script src="js/ai.js"></script>
+  <script src="js/template-panel.js"></script>
+  <script src="js/compliance-panel.js"></script>
+  <script src="js/mockup3d.js"></script>
+  <script src="js/settings-panel.js"></script>
+  <script src="js/panel.js"></script>
+</body>
+</html>

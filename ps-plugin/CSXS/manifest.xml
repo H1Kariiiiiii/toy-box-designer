@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  玩具包装盒设计助手 - Photoshop 插件（CEP 8/9，兼容 PS 2018~2020）
+  版本对照：PS 2018 = CEP 8（Chromium 57 / Node 7.7.4）；PS 2019/2020 = CEP 9（Chromium 61 / Node 8.6）
+-->
+<ExtensionManifest ExtensionBundleId="com.toybox.psplugin" ExtensionBundleName="玩具包装盒设计助手" ExtensionBundleVersion="0.6.0" Version="7.0">
+  <ExtensionList>
+    <Extension Id="com.toybox.psplugin.panel" Version="0.6.0" />
+  </ExtensionList>
+  <ExecutionEnvironment>
+    <HostList>
+      <!-- Host Version 为主应用版本号（PS 2018=19、2019=20、2020=21、2021=22），
+           不是 CEP/CSXS 版本号；CEP 8 起 PS 应用版本 19 开始 -->
+      <Host Name="PHSP" Version="[19.0,22.9]" />
+    </HostList>
+    <LocaleList>
+      <Locale Code="All" />
+    </LocaleList>
+    <RequiredRuntimeList>
+      <RequiredRuntime Name="CSXS" Version="8.0" />
+    </RequiredRuntimeList>
+  </ExecutionEnvironment>
+  <DispatchInfoList>
+    <Extension Id="com.toybox.psplugin.panel">
+      <DispatchInfo>
+        <Resources>
+          <MainPath>./index.html</MainPath>
+          <ScriptPath>./jsx/host.jsx</ScriptPath>
+          <CEFCommandLine>
+            <Parameter>--enable-nodejs</Parameter>
+            <Parameter>--mixed-context</Parameter>
+          </CEFCommandLine>
+        </Resources>
+        <Lifecycle>
+          <AutoVisible>true</AutoVisible>
+        </Lifecycle>
+        <UI>
+          <Type>Panel</Type>
+          <Menu>玩具包装盒设计助手</Menu>
+          <Geometry>
+            <Size>
+              <Height>640</Height>
+              <Width>360</Width>
+            </Size>
+            <MinSize>
+              <Height>420</Height>
+              <Width>300</Width>
+            </MinSize>
+            <MaxSize>
+              <Height>1000</Height>
+              <Width>600</Width>
+            </MaxSize>
+          </Geometry>
+        </UI>
+      </DispatchInfo>
+    </Extension>
+  </DispatchInfoList>
+</ExtensionManifest>

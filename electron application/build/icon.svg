@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ff9a5c"/>
+      <stop offset="1" stop-color="#f56f2e"/>
+    </linearGradient>
+  </defs>
+  <!-- 圆角方形背景（橙渐变，呼应应用 accent 主色） -->
+  <rect x="8" y="8" width="240" height="240" rx="56" fill="url(#bg)"/>
+  <!-- 立体包装盒（等轴测：顶面 / 前面 / 右面） -->
+  <polygon points="128,96 176,120 128,144 80,120" fill="#fff6ee" stroke="#ffd9bf" stroke-width="2" stroke-linejoin="round"/>
+  <polygon points="80,120 176,120 176,200 80,200" fill="#ffffff" stroke="#ffd9bf" stroke-width="2" stroke-linejoin="round"/>
+  <polygon points="176,120 224,96 224,176 176,200" fill="#ffc49b" stroke="#f5a16a" stroke-width="2" stroke-linejoin="round"/>
+  <!-- 盒盖中线（暗示可开合/天地盖） -->
+  <line x1="80" y1="120" x2="128" y2="144" stroke="#f5b98c" stroke-width="2"/>
+  <!-- AI 魔法星（顶面飘出，呼应 accent-2 蓝色） -->
+  <path d="M112,52 L116.5,80 L144,84.5 L116.5,89 L112,117 L107.5,89 L80,84.5 L107.5,80 Z" fill="#3d7bf0"/>
+  <path d="M112,52 L116.5,80 L144,84.5 L116.5,89 L112,117 L107.5,89 L80,84.5 L107.5,80 Z" fill="none" stroke="#ffffff" stroke-width="2" stroke-linejoin="round"/>
+  <!-- 小白星点缀 -->
+  <path d="M198,40 L200.8,57 L218,60 L200.8,63 L198,80 L195.2,63 L178,60 L195.2,57 Z" fill="#ffffff" opacity="0.95"/>
+  <path d="M52,128 L54,139 L65,141 L54,143 L52,154 L50,143 L39,141 L50,139 Z" fill="#ffffff" opacity="0.85"/>
+</svg>

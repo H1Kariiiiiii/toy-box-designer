@@ -1,0 +1,60 @@
+{
+  "name": "toy-box-designer",
+  "version": "0.4.6",
+  "description": "玩具包装盒设计 Agent - 澄海玩具电商包装设计助手（Electron MVP）",
+  "main": "main.js",
+  "author": "Toy Design Dept.",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder --win nsis"
+  },
+  "devDependencies": {
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8",
+    "esbuild": "^0.28.1"
+  },
+  "build": {
+    "appId": "com.toybox.designer",
+    "productName": "玩具包装盒设计助手",
+    "directories": {
+      "output": "release"
+    },
+    "extraResources": [
+      {
+        "from": "resources/gs",
+        "to": "gs",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "files": [
+      "main.js",
+      "preload.js",
+      "pdfx.js",
+      "lib/**/*",
+      "renderer/**/*",
+      "templates/**/*",
+      "build/icon.ico",
+      "config.example.json"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.ico",
+      "artifactName": "ToyBoxDesigner-${version}-Setup.exe",
+      "signAndEditExecutable": false
+    },
+    "afterPack": "build/after-pack.js",
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true
+    }
+  },
+  "dependencies": {
+    "jsbarcode": "^3.12.3",
+    "three": "^0.185.1"
+  }
+}
