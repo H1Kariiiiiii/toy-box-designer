@@ -422,8 +422,16 @@ function createWindow() {
             const winAfter = app.state.boxWin;
             const drawOk = Math.abs(winAfter.wPct - 20) < 3 && Math.abs(winAfter.hPct - 23) < 3 && Math.abs(winAfter.xPct - 5) < 3 && Math.abs(winAfter.yPct - 7.7) < 3;
             app.state.winDrawMode = false;
-            app.selectBoxType('tianDiGai');
+            // 窗口手柄独立于版面套版 + custom 多边形渲染
+            const savedLayout = app.state.layout;
+            app.state.layout = { template: 'farm', brand: '', product: '', series: '', sellTitle: '', sellSub: '', gridItems: [], decoOn: true, blocks: {} };
+            app.state.boxWin = { wPct: 50, hPct: 50, xPct: 20, yPct: 20, shape: 'custom', custom: [{ x: 5, y: 5 }, { x: 95, y: 5 }, { x: 95, y: 95 }, { x: 5, y: 95 }] };
+            app.renderLayout();
+            const svgN = document.querySelector('#preview-area svg');
+            const htmlN = svgN ? svgN.outerHTML : '';
+            app.state.layout = savedLayout;
             app.state.boxWin = { wPct: 55, hPct: 60, xPct: 22.5, yPct: 8, shape: 'rect' };
+            app.selectBoxType('tianDiGai');
             app.renderLayout();
             app.renderLayout();
             const svgBadges = document.querySelector('#preview-area svg');
@@ -458,6 +466,8 @@ function createWindow() {
               hasWinCircle: hasWinCircle,
               hasDrawBtn: hasDrawBtn && modeOn && modeOff,
               hasDrawOk: drawOk,
+              hasWinHandleNoLayout: htmlN.indexOf('win-handle') >= 0 && htmlN.indexOf('win-body') >= 0,
+              hasCustomPoly: htmlN.indexOf('<polygon') >= 0,
               svgLen: html.length,
             };
           } catch (e) { return 'ERR: ' + e.message; }
@@ -1518,7 +1528,7 @@ function createWindow() {
       sa('apiTest.setActive', dom.apiTest && dom.apiTest.activeShown === true && dom.apiTest.starShown === true);
       sa('apiTest.skipWhenNoKey', dom.apiTest && dom.apiTest.skipShown === true);
       sa('apiTest.failPath', dom.apiTest && dom.apiTest.failOk === true);
-      sa('layoutTpl.render', dom.layoutTpl && dom.layoutTpl.hasBrand === true && dom.layoutTpl.hasSell === true && dom.layoutTpl.hasSeries === true && dom.layoutTpl.hasGrid === true && dom.layoutTpl.hasDeco === true && dom.layoutTpl.hasGuochao === true && dom.layoutTpl.hasGloss === true && dom.layoutTpl.hasMetal === true && dom.layoutTpl.hasHandles === true && dom.layoutTpl.hasOverride === true && dom.layoutTpl.hasBadgeAge === true && dom.layoutTpl.hasBadgeRecycle === true && dom.layoutTpl.hasBadgeGc === true && dom.layoutTpl.hasOrigin === true && dom.layoutTpl.hasMultiWarn === true && dom.layoutTpl.hasWinEllipse === true && dom.layoutTpl.hasWinHandles === true && dom.layoutTpl.hasWinCircle === true && dom.layoutTpl.hasDrawBtn === true && dom.layoutTpl.hasDrawOk === true);
+      sa('layoutTpl.render', dom.layoutTpl && dom.layoutTpl.hasBrand === true && dom.layoutTpl.hasSell === true && dom.layoutTpl.hasSeries === true && dom.layoutTpl.hasGrid === true && dom.layoutTpl.hasDeco === true && dom.layoutTpl.hasGuochao === true && dom.layoutTpl.hasGloss === true && dom.layoutTpl.hasMetal === true && dom.layoutTpl.hasHandles === true && dom.layoutTpl.hasOverride === true && dom.layoutTpl.hasBadgeAge === true && dom.layoutTpl.hasBadgeRecycle === true && dom.layoutTpl.hasBadgeGc === true && dom.layoutTpl.hasOrigin === true && dom.layoutTpl.hasMultiWarn === true && dom.layoutTpl.hasWinEllipse === true && dom.layoutTpl.hasWinHandles === true && dom.layoutTpl.hasWinCircle === true && dom.layoutTpl.hasDrawBtn === true && dom.layoutTpl.hasDrawOk === true && dom.layoutTpl.hasWinHandleNoLayout === true && dom.layoutTpl.hasCustomPoly === true);
       // 主进程侧：水印请求参数构造（lib/imgRequest.js 三态；buildImageRequest 已由顶部 require）
       {
         const wmBase = { model: 'm', prompt: 'p', size: '1K' };

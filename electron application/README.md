@@ -88,7 +88,7 @@
 ### 4. 打包成安装包（给同事双击安装）
 
 双击 `build.bat`，完成后 `release/` 目录下会出现
-`ToyBoxDesigner-0.5.8-Setup.exe`，安装后桌面有快捷方式。
+`ToyBoxDesigner-0.5.9-Setup.exe`，安装后桌面有快捷方式。
 
 > 说明：MVP 阶段设置了 `signAndEditExecutable: false`——跳过 exe 图标/签名
 > 编辑（绕开 winCodeSign 在无管理员权限 Windows 上的符号链接解压 bug），

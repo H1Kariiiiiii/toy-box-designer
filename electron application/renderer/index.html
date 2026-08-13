@@ -248,8 +248,20 @@
                   <option value="round">圆角矩形</option>
                   <option value="ellipse">椭圆</option>
                   <option value="circle">圆形</option>
+                  <option value="custom">自定义（画笔）</option>
                 </select>
               </label>
+            </div>
+            <div class="win-brush-row">
+              <button id="btn-win-draw-canvas" class="mini-btn" title="在画布上用画笔自由描绘窗口形状">✏️ 画笔描绘形状</button>
+            </div>
+            <div id="win-draw-canvas-wrap" hidden>
+              <svg id="win-draw-canvas" width="100%" height="180" style="background:#fafbfc;border:1px solid #c9d2dc;border-radius:4px;touch-action:none"></svg>
+              <div class="size-row" style="margin-top:4px">
+                <button id="btn-win-draw-clear" class="mini-btn">清除</button>
+                <button id="btn-win-draw-done" class="mini-btn">完成</button>
+                <button id="btn-win-draw-cancel" class="mini-btn">取消</button>
+              </div>
             </div>
             <div class="size-row">
               <label>窗宽%<input id="boxwin-w" type="number" value="55" min="5" max="95" /></label>

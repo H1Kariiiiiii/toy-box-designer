@@ -248,6 +248,7 @@ async function init() {  const cfg = await window.api.getConfig();
   bindBarcodeDrag();
   bindLayoutDrag();
   bindWindowDrag();
+  bindWinBrush();
   const resetBtn = $('btn-layout-reset');
   if (resetBtn) resetBtn.addEventListener('click', () => { state.layout.blocks = {}; renderLayout(); }); // 预览区条码直接拖拽/缩放
   $('barcode-enabled').addEventListener('change', updateBarcode);
@@ -1427,7 +1428,11 @@ function buildSvg(scale, opts = {}) {
       strokeW = 2;
     }
 
-    if (p.kind === 'window' && (p.shape === 'ellipse' || p.shape === 'circle')) {
+    if (p.kind === 'window' && p.shape === 'custom') {
+      // 自定义画笔形状：polygon（点=相对包围盒 0-100）
+      const pts = (state.boxWin.custom || []).map((pt) => `${(x + (pt.x / 100) * w).toFixed(2)},${(y + (pt.y / 100) * h).toFixed(2)}`).join(' ');
+      parts.push(`<polygon points="${pts}" fill="${fill}" stroke="${stroke}" stroke-width="${strokeW}"/>`);
+    } else if (p.kind === 'window' && (p.shape === 'ellipse' || p.shape === 'circle')) {
       // 圆形 = 内切正圆（直径=短边）；椭圆 = 按宽高
       const rr = p.shape === 'circle' ? Math.min(w, h) / 2 : 0;
       parts.push(`<ellipse cx="${x + w / 2}" cy="${y + h / 2}" rx="${p.shape === 'circle' ? rr : w / 2}" ry="${p.shape === 'circle' ? rr : h / 2}" fill="${fill}" stroke="${stroke}" stroke-width="${strokeW}"/>`);
@@ -1470,22 +1475,6 @@ function buildSvg(scale, opts = {}) {
       sections = applyBlockOverrides(sections, state.layout.blocks); // 拖拽位置覆盖（大改）
       drawLayoutSections(parts, sections, px, off, proc);
       if (opts.interactive) drawLayoutHandles(parts, sections, px, off); // 拖拽手柄（仅预览）
-      // 窗口拖拽手柄（仅开窗盒预览；自由定制）
-      const wpp = layout.panels.find((p) => p.kind === 'window');
-      if (wpp) {
-        const wx = px(wpp.x) + off, wy = px(wpp.y) + off, ww = px(wpp.w), wh = px(wpp.h);
-        parts.push(`<rect class="win-body" data-win="body" x="${wx}" y="${wy}" width="${ww}" height="${wh}" fill="transparent" style="cursor:move"/>`);
-        const hs = 6;
-        const dirs = [
-          ['nw', wx, wy, 'nwse-resize'], ['ne', wx + ww, wy, 'nesw-resize'],
-          ['se', wx + ww, wy + wh, 'nwse-resize'], ['sw', wx, wy + wh, 'nesw-resize'],
-          ['n', wx + ww / 2, wy, 'ns-resize'], ['e', wx + ww, wy + wh / 2, 'ew-resize'],
-          ['s', wx + ww / 2, wy + wh, 'ns-resize'], ['w', wx, wy + wh / 2, 'ew-resize'],
-        ];
-        for (const d of dirs) {
-          parts.push(`<rect class="win-handle" data-win="${d[0]}" x="${d[1] - hs}" y="${d[2] - hs}" width="${hs * 2}" height="${hs * 2}" rx="1.5" fill="#ffffff" stroke="#3d7bf0" stroke-width="1" style="cursor:${d[3]}"/>`);
-        }
-      }
     }
     // 背板版面（模板指定面板且盒型存在：品牌条 + 网格 + 装饰条）
     if (tpl.back && tpl.back.panel) {
@@ -1567,6 +1556,25 @@ function buildSvg(scale, opts = {}) {
       `展开尺寸 ${layout.width} × ${layout.height} mm ${bleedNote}｜ 盒体 ${s.w} × ${s.d} × ${s.h} mm</text>`
     );
   }
+  // 窗口拖拽手柄（独立于版面套版；仅开窗盒预览）
+  if (opts.interactive) {
+    const wpp = layout.panels.find((p) => p.kind === 'window');
+    if (wpp) {
+      const wx = px(wpp.x) + off, wy = px(wpp.y) + off, ww = px(wpp.w), wh = px(wpp.h);
+      parts.push(`<rect class="win-body" data-win="body" x="${wx}" y="${wy}" width="${ww}" height="${wh}" fill="transparent" style="cursor:move"/>`);
+      const hs = 6;
+      const dirs = [
+        ['nw', wx, wy, 'nwse-resize'], ['ne', wx + ww, wy, 'nesw-resize'],
+        ['se', wx + ww, wy + wh, 'nwse-resize'], ['sw', wx, wy + wh, 'nesw-resize'],
+        ['n', wx + ww / 2, wy, 'ns-resize'], ['e', wx + ww, wy + wh / 2, 'ew-resize'],
+        ['s', wx + ww / 2, wy + wh, 'ns-resize'], ['w', wx, wy + wh / 2, 'ew-resize'],
+      ];
+      for (const d of dirs) {
+        parts.push(`<rect class="win-handle" data-win="${d[0]}" x="${d[1] - hs}" y="${d[2] - hs}" width="${hs * 2}" height="${hs * 2}" rx="1.5" fill="#ffffff" stroke="#3d7bf0" stroke-width="1" style="cursor:${d[3]}"/>`);
+      }
+    }
+  }
+
   // 工艺预览效果层（仅预览；模拟覆膜/UV/烫金视觉）
   if (proc === 'matte') {
     parts.push(`<rect x="0" y="0" width="${W}" height="${H}" fill="rgba(255,255,255,0.06)"/>`);
@@ -1798,6 +1806,99 @@ function applyWinDrag(ev) {
     sw('boxwin-w', w); sw('boxwin-h', h); sw('boxwin-x', x); sw('boxwin-y', y);
     renderLayout();
   } catch (e) { winDrag = null; }
+}
+/* ===== 窗口画笔（盒型页自由描绘形状，custom）===== */
+let winBrush = null;
+function renderWinDrawCanvas() {
+  const svg = $('win-draw-canvas');
+  if (!svg) return;
+  const layout = state.templates[state.currentType].build(getSize());
+  const fp = layout.panels.find((p) => p.id === layout.panel);
+  if (!fp) return;
+  svg.setAttribute('viewBox', '0 0 ' + fp.w + ' ' + fp.h);
+  let inner = '<rect x="0" y="0" width="' + fp.w + '" height="' + fp.h + '" fill="#f4f6f8" stroke="#9aa7b8" stroke-width="1"/>';
+  if (state.boxWin.shape === 'custom' && Array.isArray(state.boxWin.custom) && state.boxWin.custom.length > 2) {
+    inner += '<polygon points="' + state.boxWin.custom.map((pt) => ((pt.x / 100) * fp.w).toFixed(2) + ',' + ((pt.y / 100) * fp.h).toFixed(2)).join(' ') + '" fill="rgba(61,123,240,0.15)" stroke="#3d7bf0" stroke-width="1.5"/>';
+  }
+  svg.innerHTML = inner;
+  winBrush = null;
+}
+function winBrushStart(ev) {
+  const svg = $('win-draw-canvas');
+  if (!svg) return;
+  const pt = svg.createSVGPoint(); pt.x = ev.clientX; pt.y = ev.clientY;
+  const p = pt.matrixTransform(svg.getScreenCTM().inverse());
+  winBrush = { pts: [{ x: p.x, y: p.y }], svg };
+  winBrush.poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+  winBrush.poly.setAttribute('fill', 'rgba(61,123,240,0.15)');
+  winBrush.poly.setAttribute('stroke', '#3d7bf0');
+  winBrush.poly.setAttribute('stroke-width', '1.5');
+  svg.appendChild(winBrush.poly);
+}
+function winBrushMove(ev) {
+  if (!winBrush) return;
+  const pt = winBrush.svg.createSVGPoint(); pt.x = ev.clientX; pt.y = ev.clientY;
+  const p = pt.matrixTransform(winBrush.svg.getScreenCTM().inverse());
+  winBrush.pts.push({ x: p.x, y: p.y });
+  winBrush.poly.setAttribute('points', winBrush.pts.map((q) => q.x + ',' + q.y).join(' '));
+}
+function winBrushEnd() {
+  if (!winBrush) return;
+  const raw = winBrush.pts;
+  winBrush = null;
+  if (raw.length < 3) return;
+  const pts = [raw[0]];
+  for (let i = 1; i < raw.length - 1; i++) {
+    const dx = raw[i].x - pts[pts.length - 1].x, dy = raw[i].y - pts[pts.length - 1].y;
+    if (Math.sqrt(dx * dx + dy * dy) >= 1.5) pts.push(raw[i]);
+  }
+  pts.push(raw[raw.length - 1]);
+  if (pts.length < 3) return;
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const q of pts) {
+    minX = Math.min(minX, q.x); minY = Math.min(minY, q.y);
+    maxX = Math.max(maxX, q.x); maxY = Math.max(maxY, q.y);
+  }
+  const bW = maxX - minX, bH = maxY - minY;
+  if (bW < 2 || bH < 2) return;
+  const layout = state.templates[state.currentType].build(getSize());
+  const fp = layout.panels.find((p) => p.id === layout.panel);
+  if (!fp) return;
+  const pad = 3;
+  const norm = pts.map((q) => ({
+    x: Math.round((q.x - minX) / bW * (100 - pad * 2) + pad),
+    y: Math.round((q.y - minY) / bH * (100 - pad * 2) + pad),
+  }));
+  state.boxWin = Object.assign({}, state.boxWin, {
+    shape: 'custom', custom: norm,
+    xPct: Math.round((minX / fp.w) * 100 * 10) / 10,
+    yPct: Math.round((minY / fp.h) * 100 * 10) / 10,
+    wPct: Math.round((bW / fp.w) * 100 * 10) / 10,
+    hPct: Math.round((bH / fp.h) * 100 * 10) / 10,
+  });
+  const sw = (id, v) => { const el = $(id); if (el) el.value = v; };
+  sw('boxwin-w', state.boxWin.wPct); sw('boxwin-h', state.boxWin.hPct);
+  sw('boxwin-x', state.boxWin.xPct); sw('boxwin-y', state.boxWin.yPct);
+  const sh = $('boxwin-shape'); if (sh) sh.value = 'custom';
+  renderLayout();
+  renderWinDrawCanvas();
+}
+function bindWinBrush() {
+  const btn = $('btn-win-draw-canvas');
+  const wrap = $('win-draw-canvas-wrap');
+  if (btn && wrap) btn.addEventListener('click', () => { wrap.hidden = !wrap.hidden; if (!wrap.hidden) renderWinDrawCanvas(); });
+  const clear = $('btn-win-draw-clear');
+  if (clear) clear.addEventListener('click', () => { renderWinDrawCanvas(); });
+  const done = $('btn-win-draw-done');
+  if (done) done.addEventListener('click', () => { if (wrap) wrap.hidden = true; });
+  const cancel = $('btn-win-draw-cancel');
+  if (cancel) cancel.addEventListener('click', () => { if (wrap) wrap.hidden = true; });
+  const svg = $('win-draw-canvas');
+  if (svg) {
+    svg.addEventListener('mousedown', (e) => { if (wrap && !wrap.hidden) { e.preventDefault(); winBrushStart(e); } });
+    document.addEventListener('mousemove', (e) => { if (winBrush) winBrushMove(e); });
+    document.addEventListener('mouseup', () => { if (winBrush) winBrushEnd(); });
+  }
 }
 /* ===== 窗口画板绘制（自由绘制：拖框直接画出窗口位置/大小）===== */
 let winDraw = null;

@@ -77,7 +77,7 @@ function buildKaiChuangHe(s) {
     w: winW, h: winH,
     x: Math.min(Math.max(0, Math.round(W * pct(wcfg.xPct, 22.5) / 100)), W - winW),
     y: Math.min(Math.max(0, Math.round(D * pct(wcfg.yPct, 8) / 100)), D - winH),
-    shape: ['rect', 'round', 'ellipse', 'circle'].includes(wcfg.shape) ? wcfg.shape : 'rect',
+    shape: ['rect', 'round', 'ellipse', 'circle', 'custom'].includes(wcfg.shape) ? wcfg.shape : 'rect',
   };
   const P = (id, label, x, y, w, h, kind, foldEdges = []) => ({ id, label, x, y, w, h, kind, foldEdges });
 
