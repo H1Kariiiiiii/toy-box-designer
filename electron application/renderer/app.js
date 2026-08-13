@@ -21,7 +21,7 @@ const state = {
   compFields: { name: '', sku: '', material: '', standard: 'GB 6675', maker: '', warning: '', origin: '' },
   layout: { template: 'farm', brand: '', product: '', series: '', sellTitle: '', sellSub: '', gridItems: [], decoOn: true, blocks: {} }, // 版面套版（中改）；blocks=拖拽位置覆盖（大改）
   process: 'none', // 工艺预览：none|matte|gloss|uv|gold|silver（仅预览模拟，不入导出/存档）
-  boxWin: { wPct: 55, hPct: 60, xPct: 22.5, yPct: 8 }, // 开窗窗口（% 占正面面板；小改：窗口可调）
+  boxWin: { wPct: 55, hPct: 60, xPct: 22.5, yPct: 8, shape: 'rect' }, // 开窗窗口（% 占正面面板；shape: rect|round|ellipse|circle）
   badges: { age0to3: false, recycle: false, trash: false, gc: false }, // 底部标志（合规块右侧；CE/CCC 按市场自动）
   batchMode: false,   // 当前结果区是否处于批量方案模式
   schemes: [],        // 当前批量方案 [{ seed, images }]
@@ -246,6 +246,7 @@ async function init() {  const cfg = await window.api.getConfig();
   $('opt-bleed').addEventListener('change', renderLayout);
   bindBarcodeDrag();
   bindLayoutDrag();
+  bindWindowDrag();
   const resetBtn = $('btn-layout-reset');
   if (resetBtn) resetBtn.addEventListener('click', () => { state.layout.blocks = {}; renderLayout(); }); // 预览区条码直接拖拽/缩放
   $('barcode-enabled').addEventListener('change', updateBarcode);
@@ -289,6 +290,8 @@ async function init() {  const cfg = await window.api.getConfig();
     });
     renderLayout();
   });
+  const winShapeEl = $('boxwin-shape');
+  if (winShapeEl) winShapeEl.addEventListener('change', () => { state.boxWin.shape = winShapeEl.value; renderLayout(); });
   ['boxwin-w', 'boxwin-h', 'boxwin-x', 'boxwin-y'].forEach((wid) => {
     const wel = $(wid);
     if (wel) wel.addEventListener('input', () => {
@@ -893,10 +896,11 @@ async function loadScheme(rec) {
         $('size-d').value = rec.boxSize.d;
         $('size-h').value = rec.boxSize.h;
         if (rec.boxSize.win) {
-          state.boxWin = { wPct: 55, hPct: 60, xPct: 22.5, yPct: 8, ...rec.boxSize.win };
+          state.boxWin = { wPct: 55, hPct: 60, xPct: 22.5, yPct: 8, shape: 'rect', ...rec.boxSize.win };
           const sw = (id, v) => { const el = $(id); if (el) el.value = v; };
           sw('boxwin-w', state.boxWin.wPct); sw('boxwin-h', state.boxWin.hPct);
           sw('boxwin-x', state.boxWin.xPct); sw('boxwin-y', state.boxWin.yPct);
+          const sh = $('boxwin-shape'); if (sh) sh.value = state.boxWin.shape || 'rect';
         }
       }
     }
@@ -1413,7 +1417,12 @@ function buildSvg(scale, opts = {}) {
       strokeW = 2;
     }
 
-    parts.push(`<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${fill}" stroke="${stroke}" stroke-width="${strokeW}"/>`);
+    if (p.kind === 'window' && (p.shape === 'ellipse' || p.shape === 'circle')) {
+      parts.push(`<ellipse cx="${x + w / 2}" cy="${y + h / 2}" rx="${w / 2}" ry="${h / 2}" fill="${fill}" stroke="${stroke}" stroke-width="${strokeW}"/>`);
+    } else {
+      const rx = p.kind === 'window' && p.shape === 'round' ? Math.min(w, h) * 0.18 : 0;
+      parts.push(`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${rx}" fill="${fill}" stroke="${stroke}" stroke-width="${strokeW}"/>`);
+    }
 
     // 折叠线（虚线）
     if (p.foldEdges) {
@@ -1449,6 +1458,22 @@ function buildSvg(scale, opts = {}) {
       sections = applyBlockOverrides(sections, state.layout.blocks); // 拖拽位置覆盖（大改）
       drawLayoutSections(parts, sections, px, off, proc);
       if (opts.interactive) drawLayoutHandles(parts, sections, px, off); // 拖拽手柄（仅预览）
+      // 窗口拖拽手柄（仅开窗盒预览；自由定制）
+      const wpp = layout.panels.find((p) => p.kind === 'window');
+      if (wpp) {
+        const wx = px(wpp.x) + off, wy = px(wpp.y) + off, ww = px(wpp.w), wh = px(wpp.h);
+        parts.push(`<rect class="win-body" data-win="body" x="${wx}" y="${wy}" width="${ww}" height="${wh}" fill="transparent" style="cursor:move"/>`);
+        const hs = 6;
+        const dirs = [
+          ['nw', wx, wy, 'nwse-resize'], ['ne', wx + ww, wy, 'nesw-resize'],
+          ['se', wx + ww, wy + wh, 'nwse-resize'], ['sw', wx, wy + wh, 'nesw-resize'],
+          ['n', wx + ww / 2, wy, 'ns-resize'], ['e', wx + ww, wy + wh / 2, 'ew-resize'],
+          ['s', wx + ww / 2, wy + wh, 'ns-resize'], ['w', wx, wy + wh / 2, 'ew-resize'],
+        ];
+        for (const d of dirs) {
+          parts.push(`<rect class="win-handle" data-win="${d[0]}" x="${d[1] - hs}" y="${d[2] - hs}" width="${hs * 2}" height="${hs * 2}" rx="1.5" fill="#ffffff" stroke="#3d7bf0" stroke-width="1" style="cursor:${d[3]}"/>`);
+        }
+      }
     }
     // 背板版面（模板指定面板且盒型存在：品牌条 + 网格 + 装饰条）
     if (tpl.back && tpl.back.panel) {
@@ -1716,6 +1741,64 @@ function bindLayoutDrag() {
     if (layoutDrag) { e.preventDefault(); applyLayoutDrag(e); }
   });
   document.addEventListener('mouseup', () => { layoutDrag = null; });
+}
+/* ===== 开窗窗口拖拽（自由定制：拖动/8 向缩放，换算回 boxWin 百分比）===== */
+let winDrag = null;
+function initWinDrag(svg, dir, ev) {
+  const layout = state.templates[state.currentType].build(getSize());
+  const fp = layout.panels.find((p) => p.id === layout.panel);
+  const wp = layout.panels.find((p) => p.kind === 'window');
+  if (!fp || !wp) return;
+  const { scale } = previewCfg;
+  const ctm = svg.getScreenCTM();
+  if (!ctm) return;
+  winDrag = { dir, invCtm: ctm.inverse(), start: svgPointFromCtm(ev, ctm.inverse()), fp, wp, scale, win0: Object.assign({}, state.boxWin) };
+}
+function applyWinDrag(ev) {
+  if (!winDrag) return;
+  try {
+    const { dir, invCtm, start, fp, scale, win0 } = winDrag;
+    const p = svgPointFromCtm(ev, invCtm);
+    const dx = (p.x - start.x) / scale; // mm
+    const dy = (p.y - start.y) / scale;
+    const toPct = (v) => Math.round(v * 10) / 10;
+    let x = win0.xPct, y = win0.yPct, w = win0.wPct, h = win0.hPct;
+    if (dir === 'body') {
+      x = toPct(win0.xPct + (dx / fp.w) * 100);
+      y = toPct(win0.yPct + (dy / fp.h) * 100);
+    } else {
+      const dirX = dir.indexOf('w') >= 0 ? -1 : (dir.indexOf('e') >= 0 ? 1 : 0);
+      const dirY = dir.indexOf('n') >= 0 ? -1 : (dir.indexOf('s') >= 0 ? 1 : 0);
+      if (dirX !== 0) {
+        if (dirX > 0) w = toPct(Math.max(10, win0.wPct + (dx / fp.w) * 100));
+        else { w = toPct(Math.max(10, win0.wPct - (dx / fp.w) * 100)); x = toPct(win0.xPct + (win0.wPct - w)); }
+      }
+      if (dirY !== 0) {
+        if (dirY > 0) h = toPct(Math.max(10, win0.hPct + (dy / fp.h) * 100));
+        else { h = toPct(Math.max(10, win0.hPct - (dy / fp.h) * 100)); y = toPct(win0.yPct + (win0.hPct - h)); }
+      }
+    }
+    x = Math.min(Math.max(0, x), 95); y = Math.min(Math.max(0, y), 95);
+    w = Math.min(w, 100 - x); h = Math.min(h, 100 - y);
+    state.boxWin = Object.assign({}, win0, { xPct: x, yPct: y, wPct: w, hPct: h });
+    const sw = (id, v) => { const el = $(id); if (el) el.value = v; };
+    sw('boxwin-w', w); sw('boxwin-h', h); sw('boxwin-x', x); sw('boxwin-y', y);
+    renderLayout();
+  } catch (e) { winDrag = null; }
+}
+function bindWindowDrag() {
+  const area = $('preview-area');
+  area.addEventListener('mousedown', (e) => {
+    const t = e.target;
+    const svg = t.ownerSVGElement || (t.tagName === 'svg' ? t : null);
+    if (!svg || !t.dataset || !t.dataset.win) return;
+    e.preventDefault();
+    initWinDrag(svg, t.dataset.win, e);
+  });
+  document.addEventListener('mousemove', (e) => {
+    if (winDrag) { e.preventDefault(); applyWinDrag(e); }
+  });
+  document.addEventListener('mouseup', () => { winDrag = null; });
 }
 function bindBarcodeDrag() {
   const area = $('preview-area');

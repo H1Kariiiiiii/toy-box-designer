@@ -239,7 +239,17 @@
             <label>高(mm)<input id="size-h" type="number" value="60" min="10" max="500" /></label>
           </div>
           <div id="boxwin-settings" class="win-settings" hidden>
-            <p class="hint">🪟 开窗窗口（占正面面板 %，仅开窗盒）</p>
+            <p class="hint">🪟 开窗窗口（占正面面板 %，仅开窗盒；预览页可拖动/缩放）</p>
+            <div class="size-row">
+              <label>形状
+                <select id="boxwin-shape">
+                  <option value="rect" selected>矩形</option>
+                  <option value="round">圆角矩形</option>
+                  <option value="ellipse">椭圆</option>
+                  <option value="circle">圆形</option>
+                </select>
+              </label>
+            </div>
             <div class="size-row">
               <label>窗宽%<input id="boxwin-w" type="number" value="55" min="5" max="95" /></label>
               <label>窗高%<input id="boxwin-h" type="number" value="60" min="5" max="95" /></label>

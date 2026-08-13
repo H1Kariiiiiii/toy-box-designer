@@ -77,11 +77,13 @@ function buildKaiChuangHe(s) {
     w: winW, h: winH,
     x: Math.min(Math.max(0, Math.round(W * pct(wcfg.xPct, 22.5) / 100)), W - winW),
     y: Math.min(Math.max(0, Math.round(D * pct(wcfg.yPct, 8) / 100)), D - winH),
+    shape: ['rect', 'round', 'ellipse', 'circle'].includes(wcfg.shape) ? wcfg.shape : 'rect',
   };
   const P = (id, label, x, y, w, h, kind, foldEdges = []) => ({ id, label, x, y, w, h, kind, foldEdges });
 
   const front = P('front', '正面（主视觉·开窗）', H + flap, H + flap, W, D, 'face', ['top', 'bottom', 'left', 'right']);
   const windowP = P('window', '透明窗口', H + flap + win.x, H + flap + win.y, win.w, win.h, 'window');
+  windowP.shape = win.shape || 'rect'; // 窗口形状：rect|round|ellipse|circle（自由定制）
   const top = P('top', '顶面', H + flap, flap, W, H, 'side', ['bottom']);
   const topFlap = P('topFlap', '插舌', H + flap, 0, W, flap, 'flap', ['bottom']);
   const bottom = P('bottom', '底面', H + flap, flap + H + D, W, H, 'side', ['top']);

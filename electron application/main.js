@@ -377,6 +377,15 @@ function createWindow() {
             const svgW = document.querySelector('#preview-area svg');
             const htmlW = svgW ? svgW.outerHTML : '';
             app.state.compFields.warning = '';
+            // 窗口自由定制：切开窗盒 + 形状（椭圆）+ 拖拽手柄
+            app.selectBoxType('kaiChuangHe');
+            app.state.boxWin = { wPct: 40, hPct: 40, xPct: 30, yPct: 25, shape: 'ellipse' };
+            app.renderLayout();
+            const svgWin = document.querySelector('#preview-area svg');
+            const htmlWin = svgWin ? svgWin.outerHTML : '';
+            app.state.boxWin = { wPct: 55, hPct: 60, xPct: 22.5, yPct: 8, shape: 'rect' };
+            app.selectBoxType('tianDiGai');
+            app.renderLayout();
             app.renderLayout();
             const svgBadges = document.querySelector('#preview-area svg');
             const htmlBadges = svgBadges ? svgBadges.outerHTML : '';
@@ -405,6 +414,8 @@ function createWindow() {
               hasBadgeGc: htmlBadges.indexOf('GC') >= 0,
               hasOrigin: htmlBadges.indexOf('MADE IN CHINA') >= 0,
               hasMultiWarn: htmlW.indexOf('CHOKING') >= 0 && htmlW.indexOf('窒息危险') >= 0,
+              hasWinEllipse: htmlWin.indexOf('<ellipse') >= 0,
+              hasWinHandles: htmlWin.indexOf('win-handle') >= 0 && htmlWin.indexOf('win-body') >= 0,
               svgLen: html.length,
             };
           } catch (e) { return 'ERR: ' + e.message; }
@@ -1465,7 +1476,7 @@ function createWindow() {
       sa('apiTest.setActive', dom.apiTest && dom.apiTest.activeShown === true && dom.apiTest.starShown === true);
       sa('apiTest.skipWhenNoKey', dom.apiTest && dom.apiTest.skipShown === true);
       sa('apiTest.failPath', dom.apiTest && dom.apiTest.failOk === true);
-      sa('layoutTpl.render', dom.layoutTpl && dom.layoutTpl.hasBrand === true && dom.layoutTpl.hasSell === true && dom.layoutTpl.hasSeries === true && dom.layoutTpl.hasGrid === true && dom.layoutTpl.hasDeco === true && dom.layoutTpl.hasGuochao === true && dom.layoutTpl.hasGloss === true && dom.layoutTpl.hasMetal === true && dom.layoutTpl.hasHandles === true && dom.layoutTpl.hasOverride === true && dom.layoutTpl.hasBadgeAge === true && dom.layoutTpl.hasBadgeRecycle === true && dom.layoutTpl.hasBadgeGc === true && dom.layoutTpl.hasOrigin === true && dom.layoutTpl.hasMultiWarn === true);
+      sa('layoutTpl.render', dom.layoutTpl && dom.layoutTpl.hasBrand === true && dom.layoutTpl.hasSell === true && dom.layoutTpl.hasSeries === true && dom.layoutTpl.hasGrid === true && dom.layoutTpl.hasDeco === true && dom.layoutTpl.hasGuochao === true && dom.layoutTpl.hasGloss === true && dom.layoutTpl.hasMetal === true && dom.layoutTpl.hasHandles === true && dom.layoutTpl.hasOverride === true && dom.layoutTpl.hasBadgeAge === true && dom.layoutTpl.hasBadgeRecycle === true && dom.layoutTpl.hasBadgeGc === true && dom.layoutTpl.hasOrigin === true && dom.layoutTpl.hasMultiWarn === true && dom.layoutTpl.hasWinEllipse === true && dom.layoutTpl.hasWinHandles === true);
       // 主进程侧：水印请求参数构造（lib/imgRequest.js 三态；buildImageRequest 已由顶部 require）
       {
         const wmBase = { model: 'm', prompt: 'p', size: '1K' };
