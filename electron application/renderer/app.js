@@ -1418,7 +1418,9 @@ function buildSvg(scale, opts = {}) {
     }
 
     if (p.kind === 'window' && (p.shape === 'ellipse' || p.shape === 'circle')) {
-      parts.push(`<ellipse cx="${x + w / 2}" cy="${y + h / 2}" rx="${w / 2}" ry="${h / 2}" fill="${fill}" stroke="${stroke}" stroke-width="${strokeW}"/>`);
+      // 圆形 = 内切正圆（直径=短边）；椭圆 = 按宽高
+      const rr = p.shape === 'circle' ? Math.min(w, h) / 2 : 0;
+      parts.push(`<ellipse cx="${x + w / 2}" cy="${y + h / 2}" rx="${p.shape === 'circle' ? rr : w / 2}" ry="${p.shape === 'circle' ? rr : h / 2}" fill="${fill}" stroke="${stroke}" stroke-width="${strokeW}"/>`);
     } else {
       const rx = p.kind === 'window' && p.shape === 'round' ? Math.min(w, h) * 0.18 : 0;
       parts.push(`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${rx}" fill="${fill}" stroke="${stroke}" stroke-width="${strokeW}"/>`);

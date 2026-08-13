@@ -383,6 +383,13 @@ function createWindow() {
             app.renderLayout();
             const svgWin = document.querySelector('#preview-area svg');
             const htmlWin = svgWin ? svgWin.outerHTML : '';
+            // 圆形 = 内切正圆（宽高不等时 rx 必须等于 ry）
+            app.state.boxWin = { wPct: 50, hPct: 30, xPct: 20, yPct: 20, shape: 'circle' };
+            app.renderLayout();
+            const svgC = document.querySelector('#preview-area svg');
+            const htmlC = svgC ? svgC.outerHTML : '';
+            const mEl = /<ellipse cx="([\\d.]+)" cy="([\\d.]+)" rx="([\\d.]+)" ry="([\\d.]+)"/.exec(htmlC);
+            const hasWinCircle = !!mEl && Math.abs(parseFloat(mEl[3]) - parseFloat(mEl[4])) < 0.5;
             app.state.boxWin = { wPct: 55, hPct: 60, xPct: 22.5, yPct: 8, shape: 'rect' };
             app.selectBoxType('tianDiGai');
             app.renderLayout();
@@ -416,6 +423,7 @@ function createWindow() {
               hasMultiWarn: htmlW.indexOf('CHOKING') >= 0 && htmlW.indexOf('窒息危险') >= 0,
               hasWinEllipse: htmlWin.indexOf('<ellipse') >= 0,
               hasWinHandles: htmlWin.indexOf('win-handle') >= 0 && htmlWin.indexOf('win-body') >= 0,
+              hasWinCircle: hasWinCircle,
               svgLen: html.length,
             };
           } catch (e) { return 'ERR: ' + e.message; }
@@ -1476,7 +1484,7 @@ function createWindow() {
       sa('apiTest.setActive', dom.apiTest && dom.apiTest.activeShown === true && dom.apiTest.starShown === true);
       sa('apiTest.skipWhenNoKey', dom.apiTest && dom.apiTest.skipShown === true);
       sa('apiTest.failPath', dom.apiTest && dom.apiTest.failOk === true);
-      sa('layoutTpl.render', dom.layoutTpl && dom.layoutTpl.hasBrand === true && dom.layoutTpl.hasSell === true && dom.layoutTpl.hasSeries === true && dom.layoutTpl.hasGrid === true && dom.layoutTpl.hasDeco === true && dom.layoutTpl.hasGuochao === true && dom.layoutTpl.hasGloss === true && dom.layoutTpl.hasMetal === true && dom.layoutTpl.hasHandles === true && dom.layoutTpl.hasOverride === true && dom.layoutTpl.hasBadgeAge === true && dom.layoutTpl.hasBadgeRecycle === true && dom.layoutTpl.hasBadgeGc === true && dom.layoutTpl.hasOrigin === true && dom.layoutTpl.hasMultiWarn === true && dom.layoutTpl.hasWinEllipse === true && dom.layoutTpl.hasWinHandles === true);
+      sa('layoutTpl.render', dom.layoutTpl && dom.layoutTpl.hasBrand === true && dom.layoutTpl.hasSell === true && dom.layoutTpl.hasSeries === true && dom.layoutTpl.hasGrid === true && dom.layoutTpl.hasDeco === true && dom.layoutTpl.hasGuochao === true && dom.layoutTpl.hasGloss === true && dom.layoutTpl.hasMetal === true && dom.layoutTpl.hasHandles === true && dom.layoutTpl.hasOverride === true && dom.layoutTpl.hasBadgeAge === true && dom.layoutTpl.hasBadgeRecycle === true && dom.layoutTpl.hasBadgeGc === true && dom.layoutTpl.hasOrigin === true && dom.layoutTpl.hasMultiWarn === true && dom.layoutTpl.hasWinEllipse === true && dom.layoutTpl.hasWinHandles === true && dom.layoutTpl.hasWinCircle === true);
       // 主进程侧：水印请求参数构造（lib/imgRequest.js 三态；buildImageRequest 已由顶部 require）
       {
         const wmBase = { model: 'm', prompt: 'p', size: '1K' };
