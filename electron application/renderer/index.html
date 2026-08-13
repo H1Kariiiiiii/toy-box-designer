@@ -297,7 +297,17 @@
               <label>材质<input id="comp-material" type="text" placeholder="如：ABS 塑料" /></label>
               <label>执行标准<input id="comp-standard" type="text" value="GB 6675" /></label>
               <label class="full">制造商<input id="comp-maker" type="text" placeholder="公司名（可选）" /></label>
-              <label class="full">年龄 / 警告语<input id="comp-warning" type="text" placeholder="如：适合 3 岁以上儿童。内含小零件，谨防误吞" /></label>
+              <label class="full">多语言警告语（模板一键填入，可手改）
+              <select id="warning-template">
+                <option value="">— 选择警告语模板自动填入 —</option>
+                <option value="choking-zh-en">窒息警告（中英）</option>
+                <option value="choking-en-es-ar">窒息警告（英西阿）</option>
+                <option value="choking-5">窒息警告（中英西法德）</option>
+                <option value="under36-zh-en">36 个月以下（中英）</option>
+                <option value="supervision-zh-en">成人监护（中英）</option>
+              </select>
+              <textarea id="comp-warning" rows="3" placeholder="如：适合 3 岁以上儿童；可从上方选择多语言模板"></textarea>
+            </label>
             <label class="full">原产地<input id="comp-origin" type="text" placeholder="如：COUNTRY OF ORIGIN: CHINA / MADE IN CHINA" /></label>
             <div class="badge-row">
               <p class="hint">底部标志（自动排到合规块右侧；CE/CCC 按目标市场自动）</p>
@@ -629,6 +639,7 @@
   <script src="vendor/JsBarcode.all.min.js"></script>
   <script src="vendor/mockup.bundle.js"></script>
   <script src="layoutTemplates.js"></script>
+  <script src="warning-templates.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

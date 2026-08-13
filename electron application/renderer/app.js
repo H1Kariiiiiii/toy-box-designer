@@ -301,6 +301,17 @@ async function init() {  const cfg = await window.api.getConfig();
     const bel = $(bid);
     if (bel) bel.addEventListener('change', () => { state.badges[bid.replace('badge-', '')] = bel.checked; renderLayout(); });
   });
+  const warnTplEl = $('warning-template');
+  if (warnTplEl) warnTplEl.addEventListener('change', () => {
+    const txt = composeWarning(warnTplEl.value);
+    if (txt) {
+      const w = $('comp-warning');
+      if (w) w.value = txt;
+      state.compFields.warning = txt;
+      renderLayout();
+    }
+    warnTplEl.value = '';
+  });
   const processEl = $('process-select');
   if (processEl) processEl.addEventListener('change', () => { state.process = processEl.value; renderLayout(); });
   const layoutDecoEl = $('layout-deco');
@@ -1213,10 +1224,13 @@ function drawComplianceBlock(parts, layout, px, off) {
   const p = layout.panels.find((x) => x.id === pid);
   if (!p) return;
   const f = state.compFields;
-  const rows = [
-    ['品名', f.name], ['货号', f.sku], ['材质', f.material],
-    ['执行标准', f.standard], ['制造商', f.maker], ['警告', f.warning], ['原产地', f.origin],
-  ].filter((r) => r[1]);
+  const rows = [];
+  const pushRow = (k, v) => {
+    if (!v) return;
+    String(v).split('\n').forEach((line) => { const t = line.trim(); if (t) rows.push([k, t]); });
+  };
+  pushRow('品名', f.name); pushRow('货号', f.sku); pushRow('材质', f.material);
+  pushRow('执行标准', f.standard); pushRow('制造商', f.maker); pushRow('警告', f.warning); pushRow('原产地', f.origin);
   // 底部标志列表：CE/CCC 按市场自动 + 手动勾选（0-3 禁婴儿/回收/垃圾桶/海湾 GC）
   const badges = [];
   if (state.markets.has('eu')) badges.push('ce');
@@ -1247,7 +1261,7 @@ function drawComplianceBlock(parts, layout, px, off) {
   let ty = by + lh;
 
   for (const [k, v] of rows) {
-    let line = `${k}：${v}`;
+    let line = k ? `${k}：${v}` : v;
     // 超宽截断（按中文字符估算）
     if (line.length * fs > maxTextW) {
       line = line.slice(0, Math.max(6, Math.floor(maxTextW / fs))) + '…';
