@@ -21,6 +21,7 @@ const state = {
   compFields: { name: '', sku: '', material: '', standard: 'GB 6675', maker: '', warning: '' },
   layout: { template: 'farm', brand: '', product: '', series: '', sellTitle: '', sellSub: '', gridItems: [], decoOn: true }, // 版面套版（中改）
   process: 'none', // 工艺预览：none|matte|gloss|uv|gold|silver（仅预览模拟，不入导出/存档）
+  boxWin: { wPct: 55, hPct: 60, xPct: 22.5, yPct: 8 }, // 开窗窗口（% 占正面面板；小改：窗口可调）
   batchMode: false,   // 当前结果区是否处于批量方案模式
   schemes: [],        // 当前批量方案 [{ seed, images }]
   schemeArchive: [],  // 历史方案库（manifest）
@@ -284,6 +285,14 @@ async function init() {  const cfg = await window.api.getConfig();
     });
     renderLayout();
   });
+  ['boxwin-w', 'boxwin-h', 'boxwin-x', 'boxwin-y'].forEach((wid) => {
+    const wel = $(wid);
+    if (wel) wel.addEventListener('input', () => {
+      const num = (v) => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
+      state.boxWin = { wPct: num($('boxwin-w').value), hPct: num($('boxwin-h').value), xPct: num($('boxwin-x').value), yPct: num($('boxwin-y').value) };
+      renderLayout();
+    });
+  });
   const processEl = $('process-select');
   if (processEl) processEl.addEventListener('change', () => { state.process = processEl.value; renderLayout(); });
   const layoutDecoEl = $('layout-deco');
@@ -380,6 +389,8 @@ function selectBoxType(id) {
   $('size-d').value = t.defaultSize.d;
   $('size-h').value = t.defaultSize.h;
   $('preview-name').textContent = t.name;
+  const winSet = $('boxwin-settings');
+  if (winSet) winSet.hidden = id !== 'kaiChuangHe'; // 窗口可调仅开窗盒
   updateBoxSizeText();
   updateQuickStatus();
   renderLayout();
@@ -405,6 +416,7 @@ function getSize() {
     w: clamp($('size-w').value, 20, 500, 200),
     d: clamp($('size-d').value, 20, 500, 130),
     h: clamp($('size-h').value, 10, 500, 60),
+    win: state.boxWin, // 开窗窗口参数（仅开窗盒使用；其他盒型忽略）
   };
 }
 
@@ -860,6 +872,12 @@ async function loadScheme(rec) {
         $('size-w').value = rec.boxSize.w;
         $('size-d').value = rec.boxSize.d;
         $('size-h').value = rec.boxSize.h;
+        if (rec.boxSize.win) {
+          state.boxWin = { wPct: 55, hPct: 60, xPct: 22.5, yPct: 8, ...rec.boxSize.win };
+          const sw = (id, v) => { const el = $(id); if (el) el.value = v; };
+          sw('boxwin-w', state.boxWin.wPct); sw('boxwin-h', state.boxWin.hPct);
+          sw('boxwin-x', state.boxWin.xPct); sw('boxwin-y', state.boxWin.yPct);
+        }
       }
     }
     if (rec.prompt) $('req-prompt').value = rec.prompt;

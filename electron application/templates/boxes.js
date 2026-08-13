@@ -66,8 +66,18 @@ function buildTianDiGai(s) {
 function buildKaiChuangHe(s) {
   const W = s.w, D = s.d, H = s.h;
   const flap = 20;
-  // 开窗：位于正面上部，下方留品牌文字区
-  const win = { w: Math.round(W * 0.55), h: Math.round(D * 0.6), x: Math.round(W * 0.225), y: Math.round(D * 0.08) };
+  // 开窗：位于正面上部，下方留品牌文字区；支持 s.win 百分比自定义（小改：窗口可调）
+  const wcfg = s.win || {};
+  const pct = (v, d) => { const n = Number(v); return Number.isFinite(n) ? Math.min(95, Math.max(5, n)) : d; };
+  let winW = Math.round(W * pct(wcfg.wPct, 55) / 100);
+  let winH = Math.round(D * pct(wcfg.hPct, 60) / 100);
+  winW = Math.min(winW, W - 6);
+  winH = Math.min(winH, D - 6);
+  const win = {
+    w: winW, h: winH,
+    x: Math.min(Math.max(0, Math.round(W * pct(wcfg.xPct, 22.5) / 100)), W - winW),
+    y: Math.min(Math.max(0, Math.round(D * pct(wcfg.yPct, 8) / 100)), D - winH),
+  };
   const P = (id, label, x, y, w, h, kind, foldEdges = []) => ({ id, label, x, y, w, h, kind, foldEdges });
 
   const front = P('front', '正面（主视觉·开窗）', H + flap, H + flap, W, D, 'face', ['top', 'bottom', 'left', 'right']);

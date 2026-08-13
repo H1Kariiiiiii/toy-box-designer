@@ -237,6 +237,17 @@
             <label>宽(mm)<input id="size-d" type="number" value="130" min="20" max="500" /></label>
             <label>高(mm)<input id="size-h" type="number" value="60" min="10" max="500" /></label>
           </div>
+          <div id="boxwin-settings" class="win-settings" hidden>
+            <p class="hint">🪟 开窗窗口（占正面面板 %，仅开窗盒）</p>
+            <div class="size-row">
+              <label>窗宽%<input id="boxwin-w" type="number" value="55" min="5" max="95" /></label>
+              <label>窗高%<input id="boxwin-h" type="number" value="60" min="5" max="95" /></label>
+            </div>
+            <div class="size-row">
+              <label>水平偏移%<input id="boxwin-x" type="number" value="22.5" min="0" max="90" /></label>
+              <label>垂直偏移%<input id="boxwin-y" type="number" value="8" min="0" max="90" /></label>
+            </div>
+          </div>
           <p class="hint">改完立即生效：展开图、3D 盒子、导出尺寸同步更新。</p>
         </section>
         <section class="panel">
