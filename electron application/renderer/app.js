@@ -23,6 +23,7 @@ const state = {
   process: 'none', // 工艺预览：none|matte|gloss|uv|gold|silver（仅预览模拟，不入导出/存档）
   boxWin: { wPct: 55, hPct: 60, xPct: 22.5, yPct: 8, shape: 'rect' }, // 开窗窗口（% 占正面面板；shape: rect|round|ellipse|circle）
   badges: { age0to3: false, recycle: false, trash: false, gc: false }, // 底部标志（合规块右侧；CE/CCC 按市场自动）
+  winDrawMode: false, // 窗口画板绘制模式（画板拖框定窗口）
   batchMode: false,   // 当前结果区是否处于批量方案模式
   schemes: [],        // 当前批量方案 [{ seed, images }]
   schemeArchive: [],  // 历史方案库（manifest）
@@ -290,6 +291,13 @@ async function init() {  const cfg = await window.api.getConfig();
     });
     renderLayout();
   });
+  const winDrawBtn = $('btn-win-draw');
+  if (winDrawBtn) winDrawBtn.addEventListener('click', () => {
+    state.winDrawMode = !state.winDrawMode;
+    winDrawBtn.classList.toggle('active', state.winDrawMode);
+    const areaEl = $('preview-area');
+    if (areaEl) areaEl.style.cursor = state.winDrawMode ? 'crosshair' : '';
+  });
   const winShapeEl = $('boxwin-shape');
   if (winShapeEl) winShapeEl.addEventListener('change', () => { state.boxWin.shape = winShapeEl.value; renderLayout(); });
   ['boxwin-w', 'boxwin-h', 'boxwin-x', 'boxwin-y'].forEach((wid) => {
@@ -413,6 +421,8 @@ function selectBoxType(id) {
   $('preview-name').textContent = t.name;
   const winSet = $('boxwin-settings');
   if (winSet) winSet.hidden = id !== 'kaiChuangHe'; // 窗口可调仅开窗盒
+  const winDrawBtn2 = $('btn-win-draw');
+  if (winDrawBtn2) winDrawBtn2.style.display = id === 'kaiChuangHe' ? '' : 'none';
   updateBoxSizeText();
   updateQuickStatus();
   renderLayout();
@@ -1734,6 +1744,7 @@ function bindLayoutDrag() {
   const area = $('preview-area');
   area.addEventListener('mousedown', (e) => {
     const t = e.target;
+    if (state.winDrawMode) return;
     const svg = t.ownerSVGElement || (t.tagName === 'svg' ? t : null);
     if (!svg || !t.dataset || !t.dataset.lay) return;
     e.preventDefault();
@@ -1788,9 +1799,76 @@ function applyWinDrag(ev) {
     renderLayout();
   } catch (e) { winDrag = null; }
 }
+/* ===== 窗口画板绘制（自由绘制：拖框直接画出窗口位置/大小）===== */
+let winDraw = null;
+function startWinDraw(ev) {
+  const svg = document.querySelector('#preview-area svg');
+  if (!svg) return;
+  const ctm = svg.getScreenCTM();
+  if (!ctm) return;
+  const layout = state.templates[state.currentType].build(getSize());
+  const fp = layout.panels.find((p) => p.id === layout.panel);
+  if (!fp) return;
+  const { scale } = previewCfg;
+  const offPx = previewCfg.bleed * scale;
+  const r = svg.getBoundingClientRect();
+  winDraw = {
+    startClient: { x: ev.clientX, y: ev.clientY },
+    startSvg: svgPointFromCtm(ev, ctm.inverse()),
+    fp, scale, offPx, svgRect: r,
+    box: null,
+  };
+  const box = document.createElement('div');
+  box.id = 'win-draw-box';
+  box.style.cssText = 'position:absolute;border:1.5px dashed #3d7bf0;background:rgba(61,123,240,0.12);pointer-events:none;z-index:5;display:none;';
+  document.getElementById('preview-area').appendChild(box);
+  winDraw.box = box;
+}
+function moveWinDraw(ev) {
+  if (!winDraw) return;
+  const { startClient, box, svgRect } = winDraw;
+  const x = Math.min(startClient.x, ev.clientX) - svgRect.left;
+  const y = Math.min(startClient.y, ev.clientY) - svgRect.top;
+  const w = Math.abs(ev.clientX - startClient.x);
+  const h = Math.abs(ev.clientY - startClient.y);
+  box.style.display = 'block';
+  box.style.left = x + 'px';
+  box.style.top = y + 'px';
+  box.style.width = w + 'px';
+  box.style.height = h + 'px';
+}
+function endWinDraw(ev) {
+  if (!winDraw) return;
+  const { startSvg, fp, scale, offPx, box } = winDraw;
+  if (box) box.remove();
+  const svg = document.querySelector('#preview-area svg');
+  if (!svg) return;
+  const ctm = svg.getScreenCTM();
+  if (!ctm) return;
+  const end = svgPointFromCtm(ev, ctm.inverse());
+  const fpPx = { x: fp.x * scale + offPx, y: fp.y * scale + offPx, w: fp.w * scale, h: fp.h * scale };
+  let x1 = Math.min(startSvg.x, end.x), y1 = Math.min(startSvg.y, end.y);
+  let x2 = Math.max(startSvg.x, end.x), y2 = Math.max(startSvg.y, end.y);
+  const wMm = (x2 - x1) / scale, hMm = (y2 - y1) / scale;
+  const xMm = (x1 - fpPx.x) / scale, yMm = (y1 - fpPx.y) / scale;
+  if (wMm < 5 || hMm < 5) { state.winDrawMode = false; const b2 = $('btn-win-draw'); if (b2) b2.classList.remove('active'); winDraw = null; return; }
+  const xPct = Math.round(Math.min(Math.max(0, xMm / fp.w * 100), 95) * 10) / 10;
+  const yPct = Math.round(Math.min(Math.max(0, yMm / fp.h * 100), 95) * 10) / 10;
+  const wPct = Math.round(Math.min(Math.max(10, wMm / fp.w * 100), 100 - xPct) * 10) / 10;
+  const hPct = Math.round(Math.min(Math.max(10, hMm / fp.h * 100), 100 - yPct) * 10) / 10;
+  state.boxWin = Object.assign({}, state.boxWin, { xPct, yPct, wPct, hPct });
+  const sw = (id, v) => { const el = $(id); if (el) el.value = v; };
+  sw('boxwin-w', wPct); sw('boxwin-h', hPct); sw('boxwin-x', xPct); sw('boxwin-y', yPct);
+  state.winDrawMode = false;
+  const btn = $('btn-win-draw');
+  if (btn) btn.classList.remove('active');
+  renderLayout();
+  winDraw = null;
+}
 function bindWindowDrag() {
   const area = $('preview-area');
   area.addEventListener('mousedown', (e) => {
+    if (state.winDrawMode) { e.preventDefault(); startWinDraw(e); return; }
     const t = e.target;
     const svg = t.ownerSVGElement || (t.tagName === 'svg' ? t : null);
     if (!svg || !t.dataset || !t.dataset.win) return;
@@ -1798,14 +1876,19 @@ function bindWindowDrag() {
     initWinDrag(svg, t.dataset.win, e);
   });
   document.addEventListener('mousemove', (e) => {
+    if (state.winDrawMode && winDraw) { e.preventDefault(); moveWinDraw(e); return; }
     if (winDrag) { e.preventDefault(); applyWinDrag(e); }
   });
-  document.addEventListener('mouseup', () => { winDrag = null; });
+  document.addEventListener('mouseup', (e) => {
+    if (state.winDrawMode && winDraw) { endWinDraw(e); return; }
+    winDrag = null;
+  });
 }
 function bindBarcodeDrag() {
   const area = $('preview-area');
   area.addEventListener('mousedown', (e) => {
     const t = e.target;
+    if (state.winDrawMode) return;
     const svg = t.ownerSVGElement || (t.tagName === 'svg' ? t : null);
     if (!svg || !t.dataset || !t.dataset.bc) return;
     e.preventDefault();

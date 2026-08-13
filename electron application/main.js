@@ -391,7 +391,39 @@ function createWindow() {
             const mEl = /<ellipse cx="([\\d.]+)" cy="([\\d.]+)" rx="([\\d.]+)" ry="([\\d.]+)"/.exec(htmlC);
             const hasWinCircle = !!mEl && Math.abs(parseFloat(mEl[3]) - parseFloat(mEl[4])) < 0.5;
             app.state.boxWin = { wPct: 55, hPct: 60, xPct: 22.5, yPct: 8, shape: 'rect' };
+            // 窗口画板绘制：按钮 + 模式切换 + 模拟拖框（10,10)-(50,40)mm
+            const drawBtn = document.getElementById('btn-win-draw');
+            const hasDrawBtn = !!drawBtn && drawBtn.style.display !== 'none';
+            app.selectBoxType('kaiChuangHe');
+            drawBtn.click();
+            const modeOn = app.state.winDrawMode === true;
+            drawBtn.click();
+            const modeOff = app.state.winDrawMode === false;
+            drawBtn.click();
+            const areaEl2 = document.getElementById('preview-area');
+            const svgEl2 = areaEl2.querySelector('svg');
+            const ctmD = svgEl2.getScreenCTM();
+            const bleedD = document.getElementById('opt-bleed').checked ? 3 : 0;
+            const szD = { w: Number(document.getElementById('size-w').value), d: Number(document.getElementById('size-d').value), h: Number(document.getElementById('size-h').value) };
+            const layoutD = app.state.templates['kaiChuangHe'].build(szD);
+            const fpD = layoutD.panels.find((pp) => pp.id === 'front');
+            const rs = parseFloat(svgEl2.getAttribute('width')) / (layoutD.width + (bleedD ? 6 : 0));
+            const offD = bleedD * rs;
+            const toClient = (mmX, mmY) => {
+              const ux = (fpD.x + mmX) * rs + offD, uy = (fpD.y + mmY) * rs + offD;
+              const p = svgEl2.createSVGPoint(); p.x = ux; p.y = uy;
+              const q = p.matrixTransform(ctmD);
+              return { clientX: q.x, clientY: q.y };
+            };
+            const c1 = toClient(10, 10), c2 = toClient(50, 40);
+            areaEl2.dispatchEvent(new MouseEvent('mousedown', { clientX: c1.clientX, clientY: c1.clientY, bubbles: true }));
+            document.dispatchEvent(new MouseEvent('mousemove', { clientX: c2.clientX, clientY: c2.clientY, bubbles: true }));
+            document.dispatchEvent(new MouseEvent('mouseup', { clientX: c2.clientX, clientY: c2.clientY, bubbles: true }));
+            const winAfter = app.state.boxWin;
+            const drawOk = Math.abs(winAfter.wPct - 20) < 3 && Math.abs(winAfter.hPct - 23) < 3 && Math.abs(winAfter.xPct - 5) < 3 && Math.abs(winAfter.yPct - 7.7) < 3;
+            app.state.winDrawMode = false;
             app.selectBoxType('tianDiGai');
+            app.state.boxWin = { wPct: 55, hPct: 60, xPct: 22.5, yPct: 8, shape: 'rect' };
             app.renderLayout();
             app.renderLayout();
             const svgBadges = document.querySelector('#preview-area svg');
@@ -424,6 +456,8 @@ function createWindow() {
               hasWinEllipse: htmlWin.indexOf('<ellipse') >= 0,
               hasWinHandles: htmlWin.indexOf('win-handle') >= 0 && htmlWin.indexOf('win-body') >= 0,
               hasWinCircle: hasWinCircle,
+              hasDrawBtn: hasDrawBtn && modeOn && modeOff,
+              hasDrawOk: drawOk,
               svgLen: html.length,
             };
           } catch (e) { return 'ERR: ' + e.message; }
@@ -1484,7 +1518,7 @@ function createWindow() {
       sa('apiTest.setActive', dom.apiTest && dom.apiTest.activeShown === true && dom.apiTest.starShown === true);
       sa('apiTest.skipWhenNoKey', dom.apiTest && dom.apiTest.skipShown === true);
       sa('apiTest.failPath', dom.apiTest && dom.apiTest.failOk === true);
-      sa('layoutTpl.render', dom.layoutTpl && dom.layoutTpl.hasBrand === true && dom.layoutTpl.hasSell === true && dom.layoutTpl.hasSeries === true && dom.layoutTpl.hasGrid === true && dom.layoutTpl.hasDeco === true && dom.layoutTpl.hasGuochao === true && dom.layoutTpl.hasGloss === true && dom.layoutTpl.hasMetal === true && dom.layoutTpl.hasHandles === true && dom.layoutTpl.hasOverride === true && dom.layoutTpl.hasBadgeAge === true && dom.layoutTpl.hasBadgeRecycle === true && dom.layoutTpl.hasBadgeGc === true && dom.layoutTpl.hasOrigin === true && dom.layoutTpl.hasMultiWarn === true && dom.layoutTpl.hasWinEllipse === true && dom.layoutTpl.hasWinHandles === true && dom.layoutTpl.hasWinCircle === true);
+      sa('layoutTpl.render', dom.layoutTpl && dom.layoutTpl.hasBrand === true && dom.layoutTpl.hasSell === true && dom.layoutTpl.hasSeries === true && dom.layoutTpl.hasGrid === true && dom.layoutTpl.hasDeco === true && dom.layoutTpl.hasGuochao === true && dom.layoutTpl.hasGloss === true && dom.layoutTpl.hasMetal === true && dom.layoutTpl.hasHandles === true && dom.layoutTpl.hasOverride === true && dom.layoutTpl.hasBadgeAge === true && dom.layoutTpl.hasBadgeRecycle === true && dom.layoutTpl.hasBadgeGc === true && dom.layoutTpl.hasOrigin === true && dom.layoutTpl.hasMultiWarn === true && dom.layoutTpl.hasWinEllipse === true && dom.layoutTpl.hasWinHandles === true && dom.layoutTpl.hasWinCircle === true && dom.layoutTpl.hasDrawBtn === true && dom.layoutTpl.hasDrawOk === true);
       // 主进程侧：水印请求参数构造（lib/imgRequest.js 三态；buildImageRequest 已由顶部 require）
       {
         const wmBase = { model: 'm', prompt: 'p', size: '1K' };
