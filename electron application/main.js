@@ -349,6 +349,18 @@ function createWindow() {
             const svgB = document.querySelector('#preview-area svg');
             const htmlB = svgB ? svgB.outerHTML : '';
             const html = htmlA + htmlB;
+            // 工艺预览：gloss/gold 渲染检查（defs + 金属渐变文字）
+            app.state.process = 'gloss';
+            app.renderLayout();
+            const svgG = document.querySelector('#preview-area svg');
+            const htmlG = svgG ? svgG.outerHTML : '';
+            app.state.process = 'gold';
+            app.renderLayout();
+            const svgM = document.querySelector('#preview-area svg');
+            const htmlM = svgM ? svgM.outerHTML : '';
+            app.state.process = 'none';
+            app.renderLayout();
+            const htmlProc = htmlG + htmlM;
             return {
               hasBrand: html.indexOf('FARM') >= 0 && html.indexOf('#1c1c1c') >= 0,
               hasSell: html.indexOf('Push!') >= 0 && html.indexOf('To power and go') >= 0,
@@ -356,6 +368,8 @@ function createWindow() {
               hasGrid: html.indexOf('拖拉机') >= 0 && html.indexOf('01') >= 0,
               hasDeco: html.indexOf('#2e7d32') >= 0,
               hasGuochao: html.indexOf('#b01f24') >= 0 && html.indexOf('#ffd700') >= 0,
+              hasGloss: htmlProc.indexOf('procGloss') >= 0,
+              hasMetal: htmlProc.indexOf('procMetal') >= 0 && htmlProc.indexOf('url(#procMetal)') >= 0,
               svgLen: html.length,
             };
           } catch (e) { return 'ERR: ' + e.message; }
@@ -1416,7 +1430,7 @@ function createWindow() {
       sa('apiTest.setActive', dom.apiTest && dom.apiTest.activeShown === true && dom.apiTest.starShown === true);
       sa('apiTest.skipWhenNoKey', dom.apiTest && dom.apiTest.skipShown === true);
       sa('apiTest.failPath', dom.apiTest && dom.apiTest.failOk === true);
-      sa('layoutTpl.render', dom.layoutTpl && dom.layoutTpl.hasBrand === true && dom.layoutTpl.hasSell === true && dom.layoutTpl.hasSeries === true && dom.layoutTpl.hasGrid === true && dom.layoutTpl.hasDeco === true && dom.layoutTpl.hasGuochao === true);
+      sa('layoutTpl.render', dom.layoutTpl && dom.layoutTpl.hasBrand === true && dom.layoutTpl.hasSell === true && dom.layoutTpl.hasSeries === true && dom.layoutTpl.hasGrid === true && dom.layoutTpl.hasDeco === true && dom.layoutTpl.hasGuochao === true && dom.layoutTpl.hasGloss === true && dom.layoutTpl.hasMetal === true);
       // 主进程侧：水印请求参数构造（lib/imgRequest.js 三态；buildImageRequest 已由顶部 require）
       {
         const wmBase = { model: 'm', prompt: 'p', size: '1K' };

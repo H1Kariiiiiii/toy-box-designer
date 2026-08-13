@@ -20,6 +20,7 @@ const state = {
   compAuto: false,    // 自动排版合规信息到展开图
   compFields: { name: '', sku: '', material: '', standard: 'GB 6675', maker: '', warning: '' },
   layout: { template: 'farm', brand: '', product: '', series: '', sellTitle: '', sellSub: '', gridItems: [], decoOn: true }, // 版面套版（中改）
+  process: 'none', // 工艺预览：none|matte|gloss|uv|gold|silver（仅预览模拟，不入导出/存档）
   batchMode: false,   // 当前结果区是否处于批量方案模式
   schemes: [],        // 当前批量方案 [{ seed, images }]
   schemeArchive: [],  // 历史方案库（manifest）
@@ -283,6 +284,8 @@ async function init() {  const cfg = await window.api.getConfig();
     });
     renderLayout();
   });
+  const processEl = $('process-select');
+  if (processEl) processEl.addEventListener('change', () => { state.process = processEl.value; renderLayout(); });
   const layoutDecoEl = $('layout-deco');
   if (layoutDecoEl) layoutDecoEl.addEventListener('change', () => { state.layout.decoOn = layoutDecoEl.checked; renderLayout(); });
   renderQuickThemes();
@@ -1251,7 +1254,8 @@ function themeColors() {
 function buildSvg(scale, opts = {}) {
   const TC = themeColors();
   const bleed = opts.bleed || 0; // mm 出血
-  const showLabel = opts.showLabel !== false; // 预览显示尺寸标注；导出/3D 贴图去掉
+  const showLabel = opts.showLabel !== false;
+  const proc = opts.process || 'none'; // 工艺预览模拟：none|matte|gloss|uv|gold|silver // 预览显示尺寸标注；导出/3D 贴图去掉
   const t = state.templates[state.currentType];
   const layout = t.build(getSize());
   const px = (v) => v * scale;
@@ -1263,6 +1267,39 @@ function buildSvg(scale, opts = {}) {
   const parts = [];
   parts.push(`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" font-family="Microsoft YaHei, sans-serif">`);
   parts.push(`<rect x="0" y="0" width="${W}" height="${H}" fill="${TC.bg}"/>`);
+
+  // 工艺预览渐变 defs（仅预览注入；导出不含）
+  if (proc !== 'none') {
+    let defs = '<defs>';
+    if (proc === 'gloss' || proc === 'gold' || proc === 'silver') {
+      defs += '<linearGradient id="procGloss" x1="0" y1="0" x2="1" y2="1">' +
+        '<stop offset="0" stop-color="#ffffff" stop-opacity="0.30"/>' +
+        '<stop offset="0.42" stop-color="#ffffff" stop-opacity="0.02"/>' +
+        '<stop offset="0.58" stop-color="#ffffff" stop-opacity="0.02"/>' +
+        '<stop offset="1" stop-color="#ffffff" stop-opacity="0.34"/>' +
+        '</linearGradient>';
+    }
+    if (proc === 'gold' || proc === 'silver') {
+      const m = proc === 'gold'
+        ? ['#8a6d1f', '#f6e27a', '#d4af37', '#fff7c0', '#a8842c']
+        : ['#6e6e6e', '#f2f2f2', '#c0c0c0', '#ffffff', '#8a8a8a'];
+      defs += '<linearGradient id="procMetal" x1="0" y1="0" x2="1" y2="1">' +
+        '<stop offset="0" stop-color="' + m[0] + '"/>' +
+        '<stop offset="0.25" stop-color="' + m[1] + '"/>' +
+        '<stop offset="0.5" stop-color="' + m[2] + '"/>' +
+        '<stop offset="0.75" stop-color="' + m[3] + '"/>' +
+        '<stop offset="1" stop-color="' + m[4] + '"/>' +
+        '</linearGradient>';
+    }
+    if (proc === 'uv') {
+      defs += '<radialGradient id="procUv" cx="0.5" cy="0.42" r="0.8">' +
+        '<stop offset="0" stop-color="#ffffff" stop-opacity="0.32"/>' +
+        '<stop offset="0.55" stop-color="#ffffff" stop-opacity="0.10"/>' +
+        '<stop offset="1" stop-color="#ffffff" stop-opacity="0"/>' +
+        '</radialGradient>';
+    }
+    parts.push(defs + '</defs>');
+  }
 
   for (const p of layout.panels) {
     const x = px(p.x) + off, y = px(p.y) + off, w = px(p.w), h = px(p.h);
@@ -1321,7 +1358,7 @@ function buildSvg(scale, opts = {}) {
     const fp = layout.panels.find((p) => p.id === layout.panel);
     if (fp) {
       const sections = layoutSections(state.layout, { x: fp.x, y: fp.y, w: fp.w, h: fp.h }, imgs, 'front');
-      drawLayoutSections(parts, sections, px, off);
+      drawLayoutSections(parts, sections, px, off, proc);
     }
     // 背板版面（模板指定面板且盒型存在：品牌条 + 网格 + 装饰条）
     if (tpl.back && tpl.back.panel) {
@@ -1329,7 +1366,7 @@ function buildSvg(scale, opts = {}) {
       if (bp) {
         const bl = { template: state.layout.template, brand: state.layout.brand, product: '', series: '', sellTitle: '', sellSub: '', gridItems: state.layout.gridItems, decoOn: state.layout.decoOn };
         const bs = layoutSections(bl, { x: bp.x, y: bp.y, w: bp.w, h: bp.h }, imgs, 'back');
-        drawLayoutSections(parts, bs, px, off);
+        drawLayoutSections(parts, bs, px, off, proc);
       }
     }
   }
@@ -1403,6 +1440,17 @@ function buildSvg(scale, opts = {}) {
       `展开尺寸 ${layout.width} × ${layout.height} mm ${bleedNote}｜ 盒体 ${s.w} × ${s.d} × ${s.h} mm</text>`
     );
   }
+  // 工艺预览效果层（仅预览；模拟覆膜/UV/烫金视觉）
+  if (proc === 'matte') {
+    parts.push(`<rect x="0" y="0" width="${W}" height="${H}" fill="rgba(255,255,255,0.06)"/>`);
+  } else if (proc === 'gloss') {
+    parts.push(`<rect x="0" y="0" width="${W}" height="${H}" fill="url(#procGloss)"/>`);
+  } else if (proc === 'uv') {
+    parts.push(`<rect x="0" y="0" width="${W}" height="${H}" fill="url(#procUv)"/>`);
+  } else if (proc === 'gold' || proc === 'silver') {
+    parts.push(`<rect x="0" y="0" width="${W}" height="${H}" fill="url(#procGloss)"/>`);
+    parts.push(`<rect x="0" y="0" width="${W}" height="${H}" fill="rgba(0,0,0,0.03)"/>`);
+  }
   parts.push('</svg>');
   return parts.join('');
 }
@@ -1417,7 +1465,7 @@ function renderLayout() {
   const availW = Math.max(340, area.clientWidth - 28);
   const scale = +(availW / layout.width).toFixed(3);
   previewCfg = { scale, bleed: $('opt-bleed').checked ? 3 : 0 };
-  area.innerHTML = buildSvg(scale, { bleed: previewCfg.bleed, interactive: true });
+  area.innerHTML = buildSvg(scale, { bleed: previewCfg.bleed, interactive: true, process: state.process });
   scheduleMockup(); // 3D 盒子同步重建（防抖）
 }
 

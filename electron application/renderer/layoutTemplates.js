@@ -203,20 +203,23 @@ function layoutSections(layout, front, images, mode) {
   return s;
 }
 
-/** 绘制区块 → SVG parts（px 坐标；off 为出血/边距偏移，px 为 mm→px 换算函数） */
-function drawLayoutSections(parts, sections, px, off) {
+/** 绘制区块 → SVG parts（px 坐标；off 为出血/边距偏移，px 为 mm→px 换算函数）
+ * proc: 'none'|'gold'|'silver' — 烫金/烫银时品牌条/产品名/系列标签/卖点标题文字改用金属渐变（url(#procMetal)，由 buildSvg 注入 defs） */
+function drawLayoutSections(parts, sections, px, off, proc) {
+  const metal = proc === 'gold' || proc === 'silver';
+  const textFill = (secColor) => (metal && secColor ? 'url(#procMetal)' : secColor);
   if (!parts || !sections || !sections.length) return;
   for (const sec of sections) {
     const x = px(sec.x) + off, y = px(sec.y) + off, w = px(sec.w), h = px(sec.h);
     if (sec.type === 'bar') {
       parts.push(`<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${sec.bg}"/>`);
-      parts.push(`<text x="${x + w / 2}" y="${y + h / 2 + px(sec.fontSize) * 0.36}" text-anchor="middle" font-size="${px(sec.fontSize)}" font-weight="${sec.bold ? 'bold' : 'normal'}" fill="${sec.color}">${escXml(sec.text)}</text>`);
+      parts.push(`<text x="${x + w / 2}" y="${y + h / 2 + px(sec.fontSize) * 0.36}" text-anchor="middle" font-size="${px(sec.fontSize)}" font-weight="${sec.bold ? 'bold' : 'normal'}" fill="${textFill(sec.color)}">${escXml(sec.text)}</text>`);
     } else if (sec.type === 'box') {
       parts.push(`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="1.5" fill="${sec.bg}" stroke="${sec.stroke || 'none'}" stroke-width="0.6"/>`);
-      parts.push(`<text x="${x + w / 2}" y="${y + h / 2 + px(sec.fontSize) * 0.36}" text-anchor="middle" font-size="${px(sec.fontSize)}" font-weight="${sec.bold ? 'bold' : 'normal'}" fill="${sec.color}">${escXml(sec.text)}</text>`);
+      parts.push(`<text x="${x + w / 2}" y="${y + h / 2 + px(sec.fontSize) * 0.36}" text-anchor="middle" font-size="${px(sec.fontSize)}" font-weight="${sec.bold ? 'bold' : 'normal'}" fill="${textFill(sec.color)}">${escXml(sec.text)}</text>`);
     } else if (sec.type === 'sell') {
       parts.push(`<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${sec.bg}"/>`);
-      parts.push(`<text x="${x + w / 2}" y="${y + px(sec.titleSize) + 1}" text-anchor="middle" font-size="${px(sec.titleSize)}" font-weight="bold" fill="${sec.titleColor}">${escXml(sec.title)}</text>`);
+      parts.push(`<text x="${x + w / 2}" y="${y + px(sec.titleSize) + 1}" text-anchor="middle" font-size="${px(sec.titleSize)}" font-weight="bold" fill="${textFill(sec.titleColor)}">${escXml(sec.title)}</text>`);
       if (sec.sub) {
         parts.push(`<text x="${x + w / 2}" y="${y + px(sec.titleSize) + px(sec.subSize) + 5}" text-anchor="middle" font-size="${px(sec.subSize)}" fill="${sec.subColor}">${escXml(sec.sub)}</text>`);
       }
