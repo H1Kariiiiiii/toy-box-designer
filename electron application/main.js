@@ -471,6 +471,18 @@ function createWindow() {
             const ratio0 = 40 / 20;
             const ratio1 = app.state.boxWin.wPct / app.state.boxWin.hPct;
             const ratioOk = Math.abs(ratio1 - ratio0) < 0.15;
+            // 回归：盒型页输入窗宽% 不丢失 custom 形状
+            app.selectBoxType('kaiChuangHe');
+            app.state.boxWin = { wPct: 40, hPct: 30, xPct: 20, yPct: 20, shape: 'custom', custom: [{ x: 5, y: 5 }, { x: 95, y: 5 }, { x: 95, y: 95 }, { x: 5, y: 95 }] };
+            const wIn = document.getElementById('boxwin-w');
+            wIn.value = 50;
+            wIn.dispatchEvent(new Event('input'));
+            const keepCustom = app.state.boxWin.shape === 'custom' && Array.isArray(app.state.boxWin.custom) && app.state.boxWin.custom.length > 2 && app.state.boxWin.wPct === 50;
+            // 回归：切换盒型清空 blocks
+            app.state.layout.blocks = { bar: { x: 10, y: 10, w: 100, h: 8 } };
+            app.selectBoxType('shuangChaHe');
+            const blocksCleared = !app.state.layout.blocks || Object.keys(app.state.layout.blocks).length === 0;
+            app.selectBoxType('kaiChuangHe');
             app.state.boxWin = { wPct: 55, hPct: 60, xPct: 22.5, yPct: 8, shape: 'rect' };
             app.selectBoxType('tianDiGai');
             app.renderLayout();
@@ -510,6 +522,8 @@ function createWindow() {
               hasBrushClear: clearedOk,
               hasBrushAutoHide: autoHide && reOpen,
               hasRatioLock: ratioOk,
+              hasKeepCustom: keepCustom,
+              hasBlocksCleared: blocksCleared,
               hasDrawOk: drawOk,
               hasWinHandleNoLayout: htmlN.indexOf('win-handle') >= 0 && htmlN.indexOf('win-body') >= 0,
               hasCustomPath: htmlN.indexOf('fill-rule="evenodd"') >= 0 && htmlN.indexOf('<path') >= 0,
@@ -1573,7 +1587,7 @@ function createWindow() {
       sa('apiTest.setActive', dom.apiTest && dom.apiTest.activeShown === true && dom.apiTest.starShown === true);
       sa('apiTest.skipWhenNoKey', dom.apiTest && dom.apiTest.skipShown === true);
       sa('apiTest.failPath', dom.apiTest && dom.apiTest.failOk === true);
-      sa('layoutTpl.render', dom.layoutTpl && dom.layoutTpl.hasBrand === true && dom.layoutTpl.hasSell === true && dom.layoutTpl.hasSeries === true && dom.layoutTpl.hasGrid === true && dom.layoutTpl.hasDeco === true && dom.layoutTpl.hasGuochao === true && dom.layoutTpl.hasGloss === true && dom.layoutTpl.hasMetal === true && dom.layoutTpl.hasHandles === true && dom.layoutTpl.hasOverride === true && dom.layoutTpl.hasBadgeAge === true && dom.layoutTpl.hasBadgeRecycle === true && dom.layoutTpl.hasBadgeGc === true && dom.layoutTpl.hasOrigin === true && dom.layoutTpl.hasMultiWarn === true && dom.layoutTpl.hasWinEllipse === true && dom.layoutTpl.hasWinHandles === true && dom.layoutTpl.hasWinCircle === true && dom.layoutTpl.hasBrushAutoOpen === true && dom.layoutTpl.hasBrushClear === true && dom.layoutTpl.hasBrushAutoHide === true && dom.layoutTpl.hasRatioLock === true && dom.layoutTpl.hasDrawOk === true && dom.layoutTpl.hasWinHandleNoLayout === true && dom.layoutTpl.hasCustomPath === true);
+      sa('layoutTpl.render', dom.layoutTpl && dom.layoutTpl.hasBrand === true && dom.layoutTpl.hasSell === true && dom.layoutTpl.hasSeries === true && dom.layoutTpl.hasGrid === true && dom.layoutTpl.hasDeco === true && dom.layoutTpl.hasGuochao === true && dom.layoutTpl.hasGloss === true && dom.layoutTpl.hasMetal === true && dom.layoutTpl.hasHandles === true && dom.layoutTpl.hasOverride === true && dom.layoutTpl.hasBadgeAge === true && dom.layoutTpl.hasBadgeRecycle === true && dom.layoutTpl.hasBadgeGc === true && dom.layoutTpl.hasOrigin === true && dom.layoutTpl.hasMultiWarn === true && dom.layoutTpl.hasWinEllipse === true && dom.layoutTpl.hasWinHandles === true && dom.layoutTpl.hasWinCircle === true && dom.layoutTpl.hasBrushAutoOpen === true && dom.layoutTpl.hasBrushClear === true && dom.layoutTpl.hasBrushAutoHide === true && dom.layoutTpl.hasRatioLock === true && dom.layoutTpl.hasKeepCustom === true && dom.layoutTpl.hasBlocksCleared === true && dom.layoutTpl.hasDrawOk === true && dom.layoutTpl.hasWinHandleNoLayout === true && dom.layoutTpl.hasCustomPath === true);
       // 主进程侧：水印请求参数构造（lib/imgRequest.js 三态；buildImageRequest 已由顶部 require）
       {
         const wmBase = { model: 'm', prompt: 'p', size: '1K' };

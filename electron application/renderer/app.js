@@ -314,7 +314,7 @@ async function init() {  const cfg = await window.api.getConfig();
     const wel = $(wid);
     if (wel) wel.addEventListener('input', () => {
       const num = (v) => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
-      state.boxWin = { wPct: num($('boxwin-w').value), hPct: num($('boxwin-h').value), xPct: num($('boxwin-x').value), yPct: num($('boxwin-y').value) };
+      state.boxWin = Object.assign({}, state.boxWin, { wPct: num($('boxwin-w').value), hPct: num($('boxwin-h').value), xPct: num($('boxwin-x').value), yPct: num($('boxwin-y').value) });
       renderLayout();
     });
   });
@@ -431,6 +431,7 @@ function selectBoxType(id) {
   $('preview-name').textContent = t.name;
   const winSet = $('boxwin-settings');
   if (winSet) winSet.hidden = id !== 'kaiChuangHe'; // 窗口可调仅开窗盒
+  if (state.layout && state.layout.blocks) state.layout.blocks = {}; // 切换盒型清空区块拖拽位置（避免跨盒型残留）
   const winDrawBtn2 = $('btn-win-draw');
   if (winDrawBtn2) winDrawBtn2.style.display = id === 'kaiChuangHe' ? '' : 'none';
   updateBoxSizeText();
@@ -2021,7 +2022,7 @@ function startWinDraw(ev) {
   if (!fp) return;
   const { scale } = previewCfg;
   const offPx = previewCfg.bleed * scale;
-  const r = svg.getBoundingClientRect();
+  const r = document.getElementById('preview-area').getBoundingClientRect();
   winDraw = {
     startClient: { x: ev.clientX, y: ev.clientY },
     startSvg: svgPointFromCtm(ev, ctm.inverse()),
