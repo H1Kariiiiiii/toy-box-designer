@@ -251,7 +251,82 @@ function drawLayoutSections(parts, sections, px, off, proc) {
   }
 }
 
-/** 应用用户拖拽的位置覆盖：blocks[id] = { x, y, w, h }（mm，相对面板左上角）；缺省区块保持自动布局 */
+/** 折线 → 平滑曲线 path（二次贝塞尔中点平滑；自由绘画/自定义窗口渲染用） */
+function smoothPath(pts) {
+  if (!pts || pts.length < 2) return '';
+  let d = 'M ' + pts[0].x + ' ' + pts[0].y;
+  for (let i = 1; i < pts.length - 1; i++) {
+    const mx = (pts[i].x + pts[i + 1].x) / 2, my = (pts[i].y + pts[i + 1].y) / 2;
+    d += ' Q ' + pts[i].x + ' ' + pts[i].y + ' ' + mx + ' ' + my;
+  }
+  const last = pts[pts.length - 1];
+  d += ' L ' + last.x + ' ' + last.y;
+  return d;
+}
+
+/** SVG path 数据 → 点序列（支持 M/L/H/V/Q/T/C/S/Z，大小写绝对/相对；贝塞尔按段采样） */
+function parseSvgPath(d) {
+  const tokens = String(d || '').match(/[a-zA-Z]|[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?/g) || [];
+  const pts = [];
+  let i = 0, x = 0, y = 0, sx = 0, sy = 0, cmd = 'M', lc = null;
+  const num = () => { const v = parseFloat(tokens[i]); i++; return v; };
+  const cur = (rel) => (rel ? x : 0);
+  while (i < tokens.length) {
+    const t = tokens[i];
+    if (/[a-zA-Z]/.test(t)) { cmd = t; i++; if (cmd === 'z' || cmd === 'Z') { x = sx; y = sy; lc = null; continue; } }
+    const up = cmd.toUpperCase(), rel = cmd === cmd.toLowerCase() && up !== 'Z';
+    if (up === 'M') {
+      const nx = num() + cur(rel), ny = num() + cur(rel);
+      x = nx; y = ny; sx = x; sy = y; pts.push({ x, y }); cmd = rel ? 'l' : 'L';
+    } else if (up === 'L') {
+      const nx = num() + cur(rel), ny = num() + cur(rel);
+      x = nx; y = ny; pts.push({ x, y }); lc = null;
+    } else if (up === 'H') {
+      x = num() + cur(rel); pts.push({ x, y }); lc = null;
+    } else if (up === 'V') {
+      y = num() + cur(rel); pts.push({ x, y }); lc = null;
+    } else if (up === 'Q') {
+      const cx = num() + cur(rel), cy = num() + cur(rel), nx = num() + cur(rel), ny = num() + cur(rel);
+      for (let s = 1; s <= 10; s++) {
+        const t2 = s / 10, t1 = 1 - t2;
+        pts.push({ x: t1 * t1 * x + 2 * t1 * t2 * cx + t2 * t2 * nx, y: t1 * t1 * y + 2 * t1 * t2 * cy + t2 * t2 * ny });
+      }
+      x = nx; y = ny; lc = { x: cx, y: cy };
+    } else if (up === 'T') {
+      const cx = lc ? 2 * x - lc.x : x, cy = lc ? 2 * y - lc.y : y;
+      const nx = num() + cur(rel), ny = num() + cur(rel);
+      for (let s = 1; s <= 10; s++) {
+        const t2 = s / 10, t1 = 1 - t2;
+        pts.push({ x: t1 * t1 * x + 2 * t1 * t2 * cx + t2 * t2 * nx, y: t1 * t1 * y + 2 * t1 * t2 * cy + t2 * t2 * ny });
+      }
+      x = nx; y = ny; lc = { x: cx, y: cy };
+    } else if (up === 'C') {
+      const c1x = num() + cur(rel), c1y = num() + cur(rel), c2x = num() + cur(rel), c2y = num() + cur(rel), nx = num() + cur(rel), ny = num() + cur(rel);
+      for (let s = 1; s <= 15; s++) {
+        const t2 = s / 15, t1 = 1 - t2;
+        pts.push({
+          x: t1 * t1 * t1 * x + 3 * t1 * t1 * t2 * c1x + 3 * t1 * t2 * t2 * c2x + t2 * t2 * t2 * nx,
+          y: t1 * t1 * t1 * y + 3 * t1 * t1 * t2 * c1y + 3 * t1 * t2 * t2 * c2y + t2 * t2 * t2 * ny,
+        });
+      }
+      x = nx; y = ny; lc = { x: c2x, y: c2y };
+    } else if (up === 'S') {
+      const c1x = lc ? 2 * x - lc.x : x, c1y = lc ? 2 * y - lc.y : y;
+      const c2x = num() + cur(rel), c2y = num() + cur(rel), nx = num() + cur(rel), ny = num() + cur(rel);
+      for (let s = 1; s <= 15; s++) {
+        const t2 = s / 15, t1 = 1 - t2;
+        pts.push({
+          x: t1 * t1 * t1 * x + 3 * t1 * t1 * t2 * c1x + 3 * t1 * t2 * t2 * c2x + t2 * t2 * t2 * nx,
+          y: t1 * t1 * t1 * y + 3 * t1 * t1 * t2 * c1y + 3 * t1 * t2 * t2 * c2y + t2 * t2 * t2 * ny,
+        });
+      }
+      x = nx; y = ny; lc = { x: c2x, y: c2y };
+    } else { i++; }
+  }
+  return pts;
+}
+
+/** 应用 用户拖拽的位置覆盖：blocks[id] = { x, y, w, h }（mm，相对面板左上角）；缺省区块保持自动布局 */
 function applyBlockOverrides(sections, blocks) {
   if (!blocks) return sections;
   return sections.map((sec) => {
@@ -289,8 +364,10 @@ if (typeof window !== 'undefined') {
   window.drawLayoutSections = drawLayoutSections;
   window.applyBlockOverrides = applyBlockOverrides;
   window.drawLayoutHandles = drawLayoutHandles;
+  window.smoothPath = smoothPath;
+  window.parseSvgPath = parseSvgPath;
   window.escXml = escXml;
 }
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { LAYOUT_TEMPLATES, layoutSections, drawLayoutSections, applyBlockOverrides, drawLayoutHandles, escXml };
+  module.exports = { LAYOUT_TEMPLATES, layoutSections, drawLayoutSections, applyBlockOverrides, drawLayoutHandles, smoothPath, parseSvgPath, escXml };
 }

@@ -300,7 +300,14 @@ async function init() {  const cfg = await window.api.getConfig();
     if (areaEl) areaEl.style.cursor = state.winDrawMode ? 'crosshair' : '';
   });
   const winShapeEl = $('boxwin-shape');
-  if (winShapeEl) winShapeEl.addEventListener('change', () => { state.boxWin.shape = winShapeEl.value; renderLayout(); });
+  if (winShapeEl) winShapeEl.addEventListener('change', () => {
+    state.boxWin.shape = winShapeEl.value;
+    if (winShapeEl.value === 'custom') {
+      const w2 = $('win-draw-canvas-wrap');
+      if (w2) { w2.hidden = false; renderWinDrawCanvas(); }
+    }
+    renderLayout();
+  });
   ['boxwin-w', 'boxwin-h', 'boxwin-x', 'boxwin-y'].forEach((wid) => {
     const wel = $(wid);
     if (wel) wel.addEventListener('input', () => {
@@ -1428,10 +1435,10 @@ function buildSvg(scale, opts = {}) {
       strokeW = 2;
     }
 
-    if (p.kind === 'window' && p.shape === 'custom') {
-      // 自定义画笔形状：polygon（点=相对包围盒 0-100）
-      const pts = (state.boxWin.custom || []).map((pt) => `${(x + (pt.x / 100) * w).toFixed(2)},${(y + (pt.y / 100) * h).toFixed(2)}`).join(' ');
-      parts.push(`<polygon points="${pts}" fill="${fill}" stroke="${stroke}" stroke-width="${strokeW}"/>`);
+    if (p.kind === 'window' && p.shape === 'custom' && Array.isArray(state.boxWin.custom) && state.boxWin.custom.length > 2) {
+      // 自定义画笔形状：平滑 path（点=相对包围盒 0-100）
+      const cpts = (state.boxWin.custom || []).map((pt) => ({ x: x + (pt.x / 100) * w, y: y + (pt.y / 100) * h }));
+      parts.push(`<path d="${smoothPath(cpts)} Z" fill="${fill}" stroke="${stroke}" stroke-width="${strokeW}" fill-rule="evenodd"/>`);
     } else if (p.kind === 'window' && (p.shape === 'ellipse' || p.shape === 'circle')) {
       // 圆形 = 内切正圆（直径=短边）；椭圆 = 按宽高
       const rr = p.shape === 'circle' ? Math.min(w, h) / 2 : 0;
@@ -1818,7 +1825,8 @@ function renderWinDrawCanvas() {
   svg.setAttribute('viewBox', '0 0 ' + fp.w + ' ' + fp.h);
   let inner = '<rect x="0" y="0" width="' + fp.w + '" height="' + fp.h + '" fill="#f4f6f8" stroke="#9aa7b8" stroke-width="1"/>';
   if (state.boxWin.shape === 'custom' && Array.isArray(state.boxWin.custom) && state.boxWin.custom.length > 2) {
-    inner += '<polygon points="' + state.boxWin.custom.map((pt) => ((pt.x / 100) * fp.w).toFixed(2) + ',' + ((pt.y / 100) * fp.h).toFixed(2)).join(' ') + '" fill="rgba(61,123,240,0.15)" stroke="#3d7bf0" stroke-width="1.5"/>';
+    const cpts = state.boxWin.custom.map((pt) => ({ x: (pt.x / 100) * fp.w, y: (pt.y / 100) * fp.h }));
+    inner += '<path d="' + smoothPath(cpts) + ' Z" fill="rgba(61,123,240,0.15)" stroke="#3d7bf0" stroke-width="1.5" fill-rule="evenodd"/>';
   }
   svg.innerHTML = inner;
   winBrush = null;
@@ -1829,10 +1837,11 @@ function winBrushStart(ev) {
   const pt = svg.createSVGPoint(); pt.x = ev.clientX; pt.y = ev.clientY;
   const p = pt.matrixTransform(svg.getScreenCTM().inverse());
   winBrush = { pts: [{ x: p.x, y: p.y }], svg };
-  winBrush.poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+  winBrush.poly = document.createElementNS('http://www.w3.org/2000/svg', 'path');
   winBrush.poly.setAttribute('fill', 'rgba(61,123,240,0.15)');
   winBrush.poly.setAttribute('stroke', '#3d7bf0');
   winBrush.poly.setAttribute('stroke-width', '1.5');
+  winBrush.poly.setAttribute('fill-rule', 'evenodd');
   svg.appendChild(winBrush.poly);
 }
 function winBrushMove(ev) {
@@ -1840,7 +1849,7 @@ function winBrushMove(ev) {
   const pt = winBrush.svg.createSVGPoint(); pt.x = ev.clientX; pt.y = ev.clientY;
   const p = pt.matrixTransform(winBrush.svg.getScreenCTM().inverse());
   winBrush.pts.push({ x: p.x, y: p.y });
-  winBrush.poly.setAttribute('points', winBrush.pts.map((q) => q.x + ',' + q.y).join(' '));
+  winBrush.poly.setAttribute('d', smoothPath(winBrush.pts) + ' Z');
 }
 function winBrushEnd() {
   if (!winBrush) return;
@@ -1864,6 +1873,18 @@ function winBrushEnd() {
   const layout = state.templates[state.currentType].build(getSize());
   const fp = layout.panels.find((p) => p.id === layout.panel);
   if (!fp) return;
+  applyCustomShape(pts, fp);
+  renderWinDrawCanvas();
+}
+function applyCustomShape(pts, fp) {
+  if (!fp || !pts || pts.length < 3) return false;
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const q of pts) {
+    minX = Math.min(minX, q.x); minY = Math.min(minY, q.y);
+    maxX = Math.max(maxX, q.x); maxY = Math.max(maxY, q.y);
+  }
+  const bW = maxX - minX, bH = maxY - minY;
+  if (bW < 0.5 || bH < 0.5) return false;
   const pad = 3;
   const norm = pts.map((q) => ({
     x: Math.round((q.x - minX) / bW * (100 - pad * 2) + pad),
@@ -1881,14 +1902,74 @@ function winBrushEnd() {
   sw('boxwin-x', state.boxWin.xPct); sw('boxwin-y', state.boxWin.yPct);
   const sh = $('boxwin-shape'); if (sh) sh.value = 'custom';
   renderLayout();
-  renderWinDrawCanvas();
+  return true;
+}
+function importWinShape(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const doc = new DOMParser().parseFromString(String(reader.result), 'image/svg+xml');
+      const svgEl = doc.querySelector('svg');
+      if (!svgEl) throw new Error('不是有效的 SVG 文件');
+      let pts = null;
+      const pathEl = svgEl.querySelector('path');
+      const polyEl = svgEl.querySelector('polygon, polyline');
+      const rectEl = svgEl.querySelector('rect');
+      const ellEl = svgEl.querySelector('ellipse, circle');
+      if (pathEl) pts = parseSvgPath(pathEl.getAttribute('d'));
+      else if (polyEl) {
+        pts = String(polyEl.getAttribute('points')).trim().split(/[\s,]+/).map(Number).reduce((acc, v, idx, arr) => {
+          if (idx % 2 === 0 && Number.isFinite(arr[idx]) && Number.isFinite(arr[idx + 1])) acc.push({ x: arr[idx], y: arr[idx + 1] });
+          return acc;
+        }, []);
+      } else if (rectEl) {
+        const r = rectEl.getBBox();
+        pts = [{ x: r.x, y: r.y }, { x: r.x + r.width, y: r.y }, { x: r.x + r.width, y: r.y + r.height }, { x: r.x, y: r.y + r.height }];
+      } else if (ellEl) {
+        const r = ellEl.getBBox();
+        const cx = r.x + r.width / 2, cy = r.y + r.height / 2, rx = r.width / 2, ry = r.height / 2;
+        pts = [];
+        for (let ang = 0; ang <= 32; ang++) {
+          const rad = (ang / 32) * Math.PI * 2;
+          pts.push({ x: cx + rx * Math.cos(rad), y: cy + ry * Math.sin(rad) });
+        }
+      }
+      if (!pts || pts.length < 3) throw new Error('SVG 中未找到可用的形状元素');
+      const vw = parseFloat(svgEl.getAttribute('width')) || 100;
+      const vh = parseFloat(svgEl.getAttribute('height')) || 100;
+      const norm = pts.map((q) => ({ x: (q.x / vw) * 100, y: (q.y / vh) * 100 }));
+      const layout = state.templates[state.currentType].build(getSize());
+      const fp = layout.panels.find((p) => p.id === layout.panel);
+      applyCustomShape(norm, fp);
+      renderWinDrawCanvas();
+      const wrap = $('win-draw-canvas-wrap');
+      if (wrap) wrap.hidden = false;
+    } catch (e) {
+      const st = $('gen-status');
+      if (st) { st.textContent = '❌ 导入失败：' + e.message; st.className = 'status err'; }
+    }
+  };
+  reader.readAsText(file);
 }
 function bindWinBrush() {
-  const btn = $('btn-win-draw-canvas');
   const wrap = $('win-draw-canvas-wrap');
-  if (btn && wrap) btn.addEventListener('click', () => { wrap.hidden = !wrap.hidden; if (!wrap.hidden) renderWinDrawCanvas(); });
   const clear = $('btn-win-draw-clear');
-  if (clear) clear.addEventListener('click', () => { renderWinDrawCanvas(); });
+  if (clear) clear.addEventListener('click', () => {
+    state.boxWin.custom = null;
+    state.boxWin.shape = 'rect';
+    const sh = $('boxwin-shape'); if (sh) sh.value = 'rect';
+    renderLayout();
+    renderWinDrawCanvas();
+  });
+  const importBtn = $('btn-win-import');
+  const importInput = $('win-import-input');
+  if (importBtn && importInput) {
+    importBtn.addEventListener('click', () => importInput.click());
+    importInput.addEventListener('change', () => {
+      if (importInput.files && importInput.files[0]) importWinShape(importInput.files[0]);
+      importInput.value = '';
+    });
+  }
   const done = $('btn-win-draw-done');
   if (done) done.addEventListener('click', () => { if (wrap) wrap.hidden = true; });
   const cancel = $('btn-win-draw-cancel');

@@ -392,14 +392,19 @@ function createWindow() {
             const hasWinCircle = !!mEl && Math.abs(parseFloat(mEl[3]) - parseFloat(mEl[4])) < 0.5;
             app.state.boxWin = { wPct: 55, hPct: 60, xPct: 22.5, yPct: 8, shape: 'rect' };
             // 窗口画板绘制：按钮 + 模式切换 + 模拟拖框（10,10)-(50,40)mm
-            const drawBtn = document.getElementById('btn-win-draw');
-            const hasDrawBtn = !!drawBtn && drawBtn.style.display !== 'none';
             app.selectBoxType('kaiChuangHe');
-            drawBtn.click();
-            const modeOn = app.state.winDrawMode === true;
-            drawBtn.click();
-            const modeOff = app.state.winDrawMode === false;
-            drawBtn.click();
+            // 形状下拉选「自定义（画笔）」自动弹出画板
+            const shapeSel = document.getElementById('boxwin-shape');
+            shapeSel.value = 'custom';
+            shapeSel.dispatchEvent(new Event('change'));
+            const canvasWrap = document.getElementById('win-draw-canvas-wrap');
+            const autoOpen = canvasWrap ? canvasWrap.hidden === false : false;
+            // 清除按钮：清掉自定义形状并回退矩形
+            document.getElementById('btn-win-draw-clear').click();
+            const clearedOk = app.state.boxWin.custom === null && app.state.boxWin.shape === 'rect';
+            shapeSel.value = 'rect';
+            shapeSel.dispatchEvent(new Event('change'));
+            app.state.winDrawMode = true;
             const areaEl2 = document.getElementById('preview-area');
             const svgEl2 = areaEl2.querySelector('svg');
             const ctmD = svgEl2.getScreenCTM();
@@ -464,10 +469,11 @@ function createWindow() {
               hasWinEllipse: htmlWin.indexOf('<ellipse') >= 0,
               hasWinHandles: htmlWin.indexOf('win-handle') >= 0 && htmlWin.indexOf('win-body') >= 0,
               hasWinCircle: hasWinCircle,
-              hasDrawBtn: hasDrawBtn && modeOn && modeOff,
+              hasBrushAutoOpen: autoOpen,
+              hasBrushClear: clearedOk,
               hasDrawOk: drawOk,
               hasWinHandleNoLayout: htmlN.indexOf('win-handle') >= 0 && htmlN.indexOf('win-body') >= 0,
-              hasCustomPoly: htmlN.indexOf('<polygon') >= 0,
+              hasCustomPath: htmlN.indexOf('fill-rule="evenodd"') >= 0 && htmlN.indexOf('<path') >= 0,
               svgLen: html.length,
             };
           } catch (e) { return 'ERR: ' + e.message; }
@@ -1528,7 +1534,7 @@ function createWindow() {
       sa('apiTest.setActive', dom.apiTest && dom.apiTest.activeShown === true && dom.apiTest.starShown === true);
       sa('apiTest.skipWhenNoKey', dom.apiTest && dom.apiTest.skipShown === true);
       sa('apiTest.failPath', dom.apiTest && dom.apiTest.failOk === true);
-      sa('layoutTpl.render', dom.layoutTpl && dom.layoutTpl.hasBrand === true && dom.layoutTpl.hasSell === true && dom.layoutTpl.hasSeries === true && dom.layoutTpl.hasGrid === true && dom.layoutTpl.hasDeco === true && dom.layoutTpl.hasGuochao === true && dom.layoutTpl.hasGloss === true && dom.layoutTpl.hasMetal === true && dom.layoutTpl.hasHandles === true && dom.layoutTpl.hasOverride === true && dom.layoutTpl.hasBadgeAge === true && dom.layoutTpl.hasBadgeRecycle === true && dom.layoutTpl.hasBadgeGc === true && dom.layoutTpl.hasOrigin === true && dom.layoutTpl.hasMultiWarn === true && dom.layoutTpl.hasWinEllipse === true && dom.layoutTpl.hasWinHandles === true && dom.layoutTpl.hasWinCircle === true && dom.layoutTpl.hasDrawBtn === true && dom.layoutTpl.hasDrawOk === true && dom.layoutTpl.hasWinHandleNoLayout === true && dom.layoutTpl.hasCustomPoly === true);
+      sa('layoutTpl.render', dom.layoutTpl && dom.layoutTpl.hasBrand === true && dom.layoutTpl.hasSell === true && dom.layoutTpl.hasSeries === true && dom.layoutTpl.hasGrid === true && dom.layoutTpl.hasDeco === true && dom.layoutTpl.hasGuochao === true && dom.layoutTpl.hasGloss === true && dom.layoutTpl.hasMetal === true && dom.layoutTpl.hasHandles === true && dom.layoutTpl.hasOverride === true && dom.layoutTpl.hasBadgeAge === true && dom.layoutTpl.hasBadgeRecycle === true && dom.layoutTpl.hasBadgeGc === true && dom.layoutTpl.hasOrigin === true && dom.layoutTpl.hasMultiWarn === true && dom.layoutTpl.hasWinEllipse === true && dom.layoutTpl.hasWinHandles === true && dom.layoutTpl.hasWinCircle === true && dom.layoutTpl.hasBrushAutoOpen === true && dom.layoutTpl.hasBrushClear === true && dom.layoutTpl.hasDrawOk === true && dom.layoutTpl.hasWinHandleNoLayout === true && dom.layoutTpl.hasCustomPath === true);
       // 主进程侧：水印请求参数构造（lib/imgRequest.js 三态；buildImageRequest 已由顶部 require）
       {
         const wmBase = { model: 'm', prompt: 'p', size: '1K' };
