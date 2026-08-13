@@ -19,6 +19,7 @@ const state = {
   compDone: new Set(),// 已勾选的合规项
   compAuto: false,    // 自动排版合规信息到展开图
   compFields: { name: '', sku: '', material: '', standard: 'GB 6675', maker: '', warning: '' },
+  layout: { template: 'farm', brand: '', product: '', series: '', sellTitle: '', sellSub: '', gridItems: [], decoOn: true }, // 版面套版（中改）
   batchMode: false,   // 当前结果区是否处于批量方案模式
   schemes: [],        // 当前批量方案 [{ seed, images }]
   schemeArchive: [],  // 历史方案库（manifest）
@@ -261,6 +262,29 @@ async function init() {  const cfg = await window.api.getConfig();
   checkGs();
   loadSchemes();
   updateQuickStatus();
+  // ===== 版面套版输入监听（中改：填内容即套版）=====
+  const layoutInputs = [
+    ['layout-template', 'template'],
+    ['layout-brand', 'brand'],
+    ['layout-product', 'product'],
+    ['layout-series', 'series'],
+    ['layout-sell-title', 'sellTitle'],
+    ['layout-sell-sub', 'sellSub'],
+  ];
+  layoutInputs.forEach((pair) => {
+    const el = $(pair[0]);
+    if (el) el.addEventListener('input', () => { state.layout[pair[1]] = el.value.trim(); renderLayout(); });
+  });
+  const layoutGridEl = $('layout-grid');
+  if (layoutGridEl) layoutGridEl.addEventListener('input', () => {
+    state.layout.gridItems = layoutGridEl.value.split('\n').map((s) => s.trim()).filter(Boolean).map((s) => {
+      const parts = s.split(',');
+      return { no: (parts[0] || '').trim(), name: parts.slice(1).join(',').trim() };
+    });
+    renderLayout();
+  });
+  const layoutDecoEl = $('layout-deco');
+  if (layoutDecoEl) layoutDecoEl.addEventListener('change', () => { state.layout.decoOn = layoutDecoEl.checked; renderLayout(); });
   renderQuickThemes();
   // 3D mockup 懒初始化：进入「预览」页签时才创建 renderer（隐藏元素内创建会得到 0 尺寸 canvas）
 }
@@ -788,6 +812,7 @@ async function renderSchemes() {
           markets: [...state.markets],
           barcode: state.barcode,
           bleed: $('opt-bleed').checked,
+          layout: state.layout,
         });
         if (r && r.ok) {
           status.textContent = '✅ 方案已更新（当前条码/合规/尺寸等状态已存入）';
@@ -869,7 +894,27 @@ async function loadScheme(rec) {
     }
     if (Array.isArray(rec.markets)) {
       state.markets = new Set(rec.markets.filter((m) => typeof m === 'string'));
-      renderCompliance();
+  renderCompliance();
+    }
+    if (rec.layout && typeof rec.layout === 'object') {
+      const l = rec.layout;
+      state.layout = {
+        template: typeof l.template === 'string' ? l.template : 'farm',
+        brand: l.brand || '', product: l.product || '', series: l.series || '',
+        sellTitle: l.sellTitle || '', sellSub: l.sellSub || '',
+        gridItems: Array.isArray(l.gridItems) ? l.gridItems : [],
+        decoOn: l.decoOn !== false,
+      };
+      const setV = (id, v) => { const el = $(id); if (el) el.value = v; };
+      setV('layout-template', state.layout.template);
+      setV('layout-brand', state.layout.brand);
+      setV('layout-product', state.layout.product);
+      setV('layout-series', state.layout.series);
+      setV('layout-sell-title', state.layout.sellTitle);
+      setV('layout-sell-sub', state.layout.sellSub);
+      setV('layout-grid', state.layout.gridItems.map((g) => (g.no || '') + ',' + (g.name || '')).join('\n'));
+      const ld = $('layout-deco');
+      if (ld) ld.checked = state.layout.decoOn;
     }
     if (rec.barcode && rec.barcode.format && rec.barcode.value) {
       const bf = $('barcode-format'), bv = $('barcode-value'), be = $('barcode-enabled');
@@ -1055,7 +1100,7 @@ function renderCompliance() {
     chip.onclick = () => {
       if (state.markets.has(id)) state.markets.delete(id);
       else state.markets.add(id);
-      renderCompliance();
+  renderCompliance();
     };
     wrap.appendChild(chip);
   }
@@ -1078,7 +1123,7 @@ function renderCompliance() {
         div.querySelector('input').onchange = (e) => {
           if (e.target.checked) state.compDone.add(key);
           else state.compDone.delete(key);
-          renderCompliance();
+  renderCompliance();
         };
         itemsWrap.appendChild(div);
       }
@@ -1100,13 +1145,13 @@ function renderCompliance() {
       for (const id of state.markets) {
         for (const it of CD.markets[id].items) state.compDone.add(id + '::' + it.label);
       }
-      renderCompliance();
+  renderCompliance();
     }));
     selRow.appendChild(mkSelBtn('☐ 取消全部', () => {
       for (const id of state.markets) {
         for (const it of CD.markets[id].items) state.compDone.delete(id + '::' + it.label);
       }
-      renderCompliance();
+  renderCompliance();
     }));
     itemsWrap.prepend(selRow);
     itemsWrap.prepend(head);
@@ -1269,6 +1314,14 @@ function buildSvg(scale, opts = {}) {
   }
 
   // 条码叠加到模板指定的条码面板（白底 + 缩放适配；与合规块同面板时下移避让；支持自定义大小/位置）
+  // 版面套版区块（叠在主视觉/面板之上；填内容即套版）
+  if (state.layout && (state.layout.brand || state.layout.product || state.layout.series || state.layout.sellTitle || (state.layout.gridItems && state.layout.gridItems.length))) {
+    const fp = layout.panels.find((p) => p.id === layout.panel);
+    if (fp) {
+      const sections = layoutSections(state.layout, { x: fp.x, y: fp.y, w: fp.w, h: fp.h });
+      drawLayoutSections(parts, sections, px, off);
+    }
+  }
   if (state.barcode && layout.barcodePanel) {
     const bp = layout.panels.find((p) => p.id === layout.barcodePanel);
     if (bp) {

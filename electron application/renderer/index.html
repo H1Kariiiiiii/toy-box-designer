@@ -71,6 +71,36 @@
                 </select>
               </label>
             </div>
+            <details class="layout-box">
+              <summary>🧩 版面套版（品牌/卖点/装饰，填内容即自动排到正面）</summary>
+              <div class="req-grid">
+                <label>模板
+                  <select id="layout-template">
+                    <option value="farm" selected>农场经典（仿实物）</option>
+                    <option value="clean">简约白</option>
+                  </select>
+                </label>
+                <label>品牌名（顶部黑条）
+                  <input id="layout-brand" type="text" placeholder="例如 FARM" />
+                </label>
+                <label>产品名
+                  <input id="layout-product" type="text" placeholder="例如 Inertia Tractor" />
+                </label>
+                <label>系列名（右上角标签）
+                  <input id="layout-series" type="text" placeholder="例如 FARM SERIES" />
+                </label>
+                <label class="full">卖点标题（底部色块）
+                  <input id="layout-sell-title" type="text" placeholder="例如 Push!" />
+                </label>
+                <label class="full">卖点副文
+                  <input id="layout-sell-sub" type="text" placeholder="例如 To power and go" />
+                </label>
+                <label class="full">系列网格（每行：编号,名称）
+                  <textarea id="layout-grid" rows="2" placeholder="01,拖拉机&#10;02,拖车"></textarea>
+                </label>
+                <label class="check"><input type="checkbox" id="layout-deco" checked /> 底部装饰条纹</label>
+              </div>
+            </details>
             <p class="hint">💡 小提示：画面满意就点「导出」保存；想再出风格一样的，把「画面编号」的数字记下来，下次填回即可</p>
             <p id="count-hint" class="hint hidden">⚠ 一次生成多张仅 5.0 lite / 4.5 / 4.0 支持（5.0 pro 不支持）</p>
             <div id="refimage-preview" class="refimage-preview hidden"></div>
@@ -558,6 +588,7 @@
   <script src="compliance.js"></script>
   <script src="vendor/JsBarcode.all.min.js"></script>
   <script src="vendor/mockup.bundle.js"></script>
+  <script src="layoutTemplates.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

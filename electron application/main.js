@@ -335,6 +335,25 @@ function createWindow() {
         })();
 
         // 展开图等比例放大（预览页可见时）：SVG 宽度 ≈ 容器可用宽度，不被拉伸
+        // 版面套版（中改）：注入版面数据 → 重渲染 → 检查 SVG 区块
+        out.layoutTpl = (() => {
+          try {
+            const app = window.__app;
+            app.state.layout = { template: 'farm', brand: 'FARM', product: 'Inertia Tractor', series: 'FARM SERIES', sellTitle: 'Push!', sellSub: 'To power and go', decoOn: true, gridItems: [{ no: '01', name: '拖拉机' }] };
+            app.renderLayout();
+            const svg = document.querySelector('#preview-area svg');
+            if (!svg) return 'no-svg';
+            const html = svg.outerHTML;
+            return {
+              hasBrand: html.indexOf('FARM') >= 0 && html.indexOf('#1c1c1c') >= 0,
+              hasSell: html.indexOf('Push!') >= 0 && html.indexOf('To power and go') >= 0,
+              hasSeries: html.indexOf('FARM SERIES') >= 0,
+              hasGrid: html.indexOf('拖拉机') >= 0 && html.indexOf('01') >= 0,
+              hasDeco: html.indexOf('#2e7d32') >= 0,
+              svgLen: html.length,
+            };
+          } catch (e) { return 'ERR: ' + e.message; }
+        })();
         out.svgFit = (() => {
           const svg = document.querySelector('#preview-area svg');
           const area = document.getElementById('preview-area');
@@ -1391,6 +1410,7 @@ function createWindow() {
       sa('apiTest.setActive', dom.apiTest && dom.apiTest.activeShown === true && dom.apiTest.starShown === true);
       sa('apiTest.skipWhenNoKey', dom.apiTest && dom.apiTest.skipShown === true);
       sa('apiTest.failPath', dom.apiTest && dom.apiTest.failOk === true);
+      sa('layoutTpl.render', dom.layoutTpl && dom.layoutTpl.hasBrand === true && dom.layoutTpl.hasSell === true && dom.layoutTpl.hasSeries === true && dom.layoutTpl.hasGrid === true && dom.layoutTpl.hasDeco === true);
       // 主进程侧：水印请求参数构造（lib/imgRequest.js 三态；buildImageRequest 已由顶部 require）
       {
         const wmBase = { model: 'm', prompt: 'p', size: '1K' };
