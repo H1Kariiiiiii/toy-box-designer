@@ -360,6 +360,15 @@ function createWindow() {
             const htmlM = svgM ? svgM.outerHTML : '';
             app.state.process = 'none';
             app.renderLayout();
+            // 拖拽编辑器：位置覆盖 + 手柄层检查
+            app.state.layout.blocks = { bar: { x: 10, y: 10, w: 100, h: 8 } };
+            app.renderLayout();
+            const svgD = document.querySelector('#preview-area svg');
+            const htmlD = svgD ? svgD.outerHTML : '';
+            app.state.layout.blocks = {};
+            app.renderLayout();
+            const htmlDrag = htmlD;
+            app.renderLayout();
             const htmlProc = htmlG + htmlM;
             return {
               hasBrand: html.indexOf('FARM') >= 0 && html.indexOf('#1c1c1c') >= 0,
@@ -370,6 +379,8 @@ function createWindow() {
               hasGuochao: html.indexOf('#b01f24') >= 0 && html.indexOf('#ffd700') >= 0,
               hasGloss: htmlProc.indexOf('procGloss') >= 0,
               hasMetal: htmlProc.indexOf('procMetal') >= 0 && htmlProc.indexOf('url(#procMetal)') >= 0,
+              hasHandles: htmlDrag.indexOf('lay-handle') >= 0 && htmlDrag.indexOf('lay-body') >= 0,
+              hasOverride: htmlDrag.indexOf('data-lay="bar"') >= 0,
               svgLen: html.length,
             };
           } catch (e) { return 'ERR: ' + e.message; }
@@ -1430,7 +1441,7 @@ function createWindow() {
       sa('apiTest.setActive', dom.apiTest && dom.apiTest.activeShown === true && dom.apiTest.starShown === true);
       sa('apiTest.skipWhenNoKey', dom.apiTest && dom.apiTest.skipShown === true);
       sa('apiTest.failPath', dom.apiTest && dom.apiTest.failOk === true);
-      sa('layoutTpl.render', dom.layoutTpl && dom.layoutTpl.hasBrand === true && dom.layoutTpl.hasSell === true && dom.layoutTpl.hasSeries === true && dom.layoutTpl.hasGrid === true && dom.layoutTpl.hasDeco === true && dom.layoutTpl.hasGuochao === true && dom.layoutTpl.hasGloss === true && dom.layoutTpl.hasMetal === true);
+      sa('layoutTpl.render', dom.layoutTpl && dom.layoutTpl.hasBrand === true && dom.layoutTpl.hasSell === true && dom.layoutTpl.hasSeries === true && dom.layoutTpl.hasGrid === true && dom.layoutTpl.hasDeco === true && dom.layoutTpl.hasGuochao === true && dom.layoutTpl.hasGloss === true && dom.layoutTpl.hasMetal === true && dom.layoutTpl.hasHandles === true && dom.layoutTpl.hasOverride === true);
       // 主进程侧：水印请求参数构造（lib/imgRequest.js 三态；buildImageRequest 已由顶部 require）
       {
         const wmBase = { model: 'm', prompt: 'p', size: '1K' };

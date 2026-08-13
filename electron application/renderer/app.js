@@ -19,7 +19,7 @@ const state = {
   compDone: new Set(),// 已勾选的合规项
   compAuto: false,    // 自动排版合规信息到展开图
   compFields: { name: '', sku: '', material: '', standard: 'GB 6675', maker: '', warning: '' },
-  layout: { template: 'farm', brand: '', product: '', series: '', sellTitle: '', sellSub: '', gridItems: [], decoOn: true }, // 版面套版（中改）
+  layout: { template: 'farm', brand: '', product: '', series: '', sellTitle: '', sellSub: '', gridItems: [], decoOn: true, blocks: {} }, // 版面套版（中改）；blocks=拖拽位置覆盖（大改）
   process: 'none', // 工艺预览：none|matte|gloss|uv|gold|silver（仅预览模拟，不入导出/存档）
   boxWin: { wPct: 55, hPct: 60, xPct: 22.5, yPct: 8 }, // 开窗窗口（% 占正面面板；小改：窗口可调）
   batchMode: false,   // 当前结果区是否处于批量方案模式
@@ -243,7 +243,10 @@ async function init() {  const cfg = await window.api.getConfig();
   $('req-count').addEventListener('change', () => { autoBuildPrompt(); updateCountHint(); });
   $('cfg-model').addEventListener('input', updateCountHint);
   $('opt-bleed').addEventListener('change', renderLayout);
-  bindBarcodeDrag(); // 预览区条码直接拖拽/缩放
+  bindBarcodeDrag();
+  bindLayoutDrag();
+  const resetBtn = $('btn-layout-reset');
+  if (resetBtn) resetBtn.addEventListener('click', () => { state.layout.blocks = {}; renderLayout(); }); // 预览区条码直接拖拽/缩放
   $('barcode-enabled').addEventListener('change', updateBarcode);
   ['barcode-format', 'barcode-value'].forEach((id) => {
     $(id).addEventListener('input', updateBarcode);
@@ -1375,8 +1378,10 @@ function buildSvg(scale, opts = {}) {
     const imgs = (state.generatedImages || []).map((g) => (g && g.dataUrl) || null);
     const fp = layout.panels.find((p) => p.id === layout.panel);
     if (fp) {
-      const sections = layoutSections(state.layout, { x: fp.x, y: fp.y, w: fp.w, h: fp.h }, imgs, 'front');
+      let sections = layoutSections(state.layout, { x: fp.x, y: fp.y, w: fp.w, h: fp.h }, imgs, 'front');
+      sections = applyBlockOverrides(sections, state.layout.blocks); // 拖拽位置覆盖（大改）
       drawLayoutSections(parts, sections, px, off, proc);
+      if (opts.interactive) drawLayoutHandles(parts, sections, px, off); // 拖拽手柄（仅预览）
     }
     // 背板版面（模板指定面板且盒型存在：品牌条 + 网格 + 装饰条）
     if (tpl.back && tpl.back.panel) {
@@ -1583,6 +1588,67 @@ function applyBarcodeDrag(ev) {
   } catch (e) {
     bcDrag = null; // 换算异常（如重绘后矩阵失效）时终止拖拽，避免方向错乱
   }
+}
+/* ===== 套版区块拖拽（大改：拖拽版面编辑器；复用条码拖拽的 CTM 快照机制）===== */
+let layoutDrag = null;
+function initLayoutDrag(svg, id, dir, ev) {
+  const layout = state.templates[state.currentType].build(getSize());
+  const fp = layout.panels.find((p) => p.id === layout.panel);
+  if (!fp) return;
+  const { scale } = previewCfg;
+  const offPx = previewCfg.bleed * scale;
+  const auto = layoutSections(state.layout, { x: fp.x, y: fp.y, w: fp.w, h: fp.h }, null, 'front');
+  const cur = (state.layout.blocks && state.layout.blocks[id]) || (auto.find((s) => s.id === id) || {});
+  if (!(cur.w > 0) || !(cur.h > 0)) return;
+  const ctm = svg.getScreenCTM();
+  if (!ctm) return;
+  layoutDrag = { id, dir, invCtm: ctm.inverse(), start: svgPointFromCtm(ev, ctm.inverse()), fp, scale, offPx, cur: { x: cur.x, y: cur.y, w: cur.w, h: cur.h } };
+}
+function applyLayoutDrag(ev) {
+  if (!layoutDrag) return;
+  try {
+    const { id, dir, invCtm, start, fp, scale, cur } = layoutDrag;
+    const p = svgPointFromCtm(ev, invCtm);
+    const dx = (p.x - start.x) / scale; // px → mm
+    const dy = (p.y - start.y) / scale;
+    let nx = cur.x, ny = cur.y, nw = cur.w, nh = cur.h;
+    if (dir === 'body') {
+      nx = cur.x + dx; ny = cur.y + dy;
+    } else {
+      const dirX = dir.indexOf('w') >= 0 ? -1 : (dir.indexOf('e') >= 0 ? 1 : 0);
+      const dirY = dir.indexOf('n') >= 0 ? -1 : (dir.indexOf('s') >= 0 ? 1 : 0);
+      if (dirX !== 0) {
+        if (dirX > 0) nw = Math.max(8, cur.w + dx);
+        else { nw = Math.max(8, cur.w - dx); nx = cur.x + (cur.w - nw); }
+      }
+      if (dirY !== 0) {
+        if (dirY > 0) nh = Math.max(8, cur.h + dy);
+        else { nh = Math.max(8, cur.h - dy); ny = cur.y + (cur.h - nh); }
+      }
+    }
+    // clamp 到面板内
+    nx = Math.min(Math.max(0, nx), fp.w - 4);
+    ny = Math.min(Math.max(0, ny), fp.h - 4);
+    nw = Math.min(nw, Math.max(8, fp.w - nx - 2));
+    nh = Math.min(nh, Math.max(8, fp.h - ny - 2));
+    if (!state.layout.blocks) state.layout.blocks = {};
+    state.layout.blocks[id] = { x: Math.round(nx * 10) / 10, y: Math.round(ny * 10) / 10, w: Math.round(nw * 10) / 10, h: Math.round(nh * 10) / 10 };
+    renderLayout();
+  } catch (e) { layoutDrag = null; }
+}
+function bindLayoutDrag() {
+  const area = $('preview-area');
+  area.addEventListener('mousedown', (e) => {
+    const t = e.target;
+    const svg = t.ownerSVGElement || (t.tagName === 'svg' ? t : null);
+    if (!svg || !t.dataset || !t.dataset.lay) return;
+    e.preventDefault();
+    initLayoutDrag(svg, t.dataset.lay, t.dataset.dir || 'body', e);
+  });
+  document.addEventListener('mousemove', (e) => {
+    if (layoutDrag) { e.preventDefault(); applyLayoutDrag(e); }
+  });
+  document.addEventListener('mouseup', () => { layoutDrag = null; });
 }
 function bindBarcodeDrag() {
   const area = $('preview-area');

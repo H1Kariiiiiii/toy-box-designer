@@ -124,7 +124,7 @@ function layoutSections(layout, front, images, mode) {
   // 顶部品牌条
   if (layout.brand) {
     s.push({
-      type: 'bar', x: 0, y: 0, w: W, h: isBack ? Math.min(9, tpl.brandBar.hMm) : tpl.brandBar.hMm,
+      type: 'bar', id: 'bar', draggable: !isBack, x: 0, y: 0, w: W, h: isBack ? Math.min(9, tpl.brandBar.hMm) : tpl.brandBar.hMm,
       bg: tpl.brandBar.bg, text: layout.brand, color: tpl.brandBar.text,
       fontSize: Math.min(9, (isBack ? 9 : tpl.brandBar.hMm) * 0.55), bold: true,
     });
@@ -135,7 +135,7 @@ function layoutSections(layout, front, images, mode) {
     let y = (layout.brand ? tpl.brandBar.hMm : 0) + 2;
     if (layout.product) {
       s.push({
-        type: 'box', x: margin, y: y, w: Math.min(W * 0.62, 96), h: 9,
+        type: 'box', id: 'product', draggable: true, x: margin, y: y, w: Math.min(W * 0.62, 96), h: 9,
         bg: tpl.productName.bg, text: layout.product, color: tpl.productName.text,
         fontSize: 6.5, bold: true, stroke: '#d0d0d0',
       });
@@ -145,7 +145,7 @@ function layoutSections(layout, front, images, mode) {
     if (layout.series) {
       const tw = Math.min(W * 0.34, 48);
       s.push({
-        type: 'box', x: W - margin - tw, y: (layout.brand ? tpl.brandBar.hMm : 0) + 2, w: tw, h: 7,
+        type: 'box', id: 'series', draggable: true, x: W - margin - tw, y: (layout.brand ? tpl.brandBar.hMm : 0) + 2, w: tw, h: 7,
         bg: tpl.seriesTag.bg, text: layout.series, color: tpl.seriesTag.text,
         fontSize: 5, bold: true,
       });
@@ -153,7 +153,7 @@ function layoutSections(layout, front, images, mode) {
     // 卖点区（底部，网格下方留白）
     if (layout.sellTitle) {
       s.push({
-        type: 'sell', x: 0, y: D - sellH - decoH, w: W, h: sellH,
+        type: 'sell', id: 'sell', draggable: !isBack, x: 0, y: D - sellH - decoH, w: W, h: sellH,
         bg: tpl.sellBlock.bg, title: layout.sellTitle, sub: layout.sellSub || '',
         titleColor: tpl.sellBlock.title, subColor: tpl.sellBlock.sub,
         titleSize: 8, subSize: 4.5,
@@ -175,7 +175,7 @@ function layoutSections(layout, front, images, mode) {
       const gh = Math.min(rows * 16 + 4, isBack ? D - topBand - decoH - 8 : 44);
       const gy = isBack ? topBand : D - topBand - gh;
       s.push({
-        type: 'grid', x: margin, y: gy, w: W - margin * 2, h: gh,
+        type: 'grid', id: 'grid', draggable: !isBack, x: margin, y: gy, w: W - margin * 2, h: gh,
         items: items, cols: cols,
         cellBg: 'rgba(255,255,255,0.94)', border: '#1c1c1c', textColor: '#1c1c1c',
       });
@@ -185,7 +185,7 @@ function layoutSections(layout, front, images, mode) {
       const gy = Math.max((layout.brand ? tpl.brandBar.hMm : 0) + 11, 0) + 2;
       const gh = Math.max(20, D - gy - sellH - decoH - 8);
       s.push({
-        type: 'grid', x: gx, y: gy, w: gridW, h: gh,
+        type: 'grid', id: 'grid', draggable: true, x: gx, y: gy, w: gridW, h: gh,
         items: items, cols: 1,
         cellBg: 'rgba(255,255,255,0.94)', border: '#1c1c1c', textColor: '#1c1c1c',
       });
@@ -251,13 +251,46 @@ function drawLayoutSections(parts, sections, px, off, proc) {
   }
 }
 
+/** 应用用户拖拽的位置覆盖：blocks[id] = { x, y, w, h }（mm，相对面板左上角）；缺省区块保持自动布局 */
+function applyBlockOverrides(sections, blocks) {
+  if (!blocks) return sections;
+  return sections.map((sec) => {
+    const o = blocks[sec.id];
+    if (!o || !sec.draggable) return sec;
+    return Object.assign({}, sec, { x: o.x, y: o.y, w: o.w, h: o.h });
+  });
+}
+
+/** 拖拽交互层（仅预览 interactive 模式）：命中区 + 8 向缩放手柄（data-lay=data-dir） */
+function drawLayoutHandles(parts, sections, px, off) {
+  if (!parts || !sections) return;
+  for (const sec of sections) {
+    if (!sec.draggable) continue;
+    const x = px(sec.x) + off, y = px(sec.y) + off, w = px(sec.w), h = px(sec.h);
+    if (w < 8 || h < 8) continue;
+    parts.push(`<rect class="lay-body" data-lay="${sec.id}" x="${x}" y="${y}" width="${w}" height="${h}" fill="transparent" style="cursor:move"/>`);
+    const hs = 6;
+    const dirs = [
+      ['nw', x, y, 'nwse-resize'], ['ne', x + w, y, 'nesw-resize'],
+      ['se', x + w, y + h, 'nwse-resize'], ['sw', x, y + h, 'nesw-resize'],
+      ['n', x + w / 2, y, 'ns-resize'], ['e', x + w, y + h / 2, 'ew-resize'],
+      ['s', x + w / 2, y + h, 'ns-resize'], ['w', x, y + h / 2, 'ew-resize'],
+    ];
+    for (const d of dirs) {
+      parts.push(`<rect class="lay-handle" data-lay="${sec.id}" data-dir="${d[0]}" x="${d[1] - hs}" y="${d[2] - hs}" width="${hs * 2}" height="${hs * 2}" rx="1.5" fill="#ffffff" stroke="#2b5797" stroke-width="1" style="cursor:${d[3]}"/>`);
+    }
+  }
+}
+
 // 双兼容导出：浏览器 script（挂 window 全局）与 CommonJS（测试/Node 环境）
 if (typeof window !== 'undefined') {
   window.LAYOUT_TEMPLATES = LAYOUT_TEMPLATES;
   window.layoutSections = layoutSections;
   window.drawLayoutSections = drawLayoutSections;
+  window.applyBlockOverrides = applyBlockOverrides;
+  window.drawLayoutHandles = drawLayoutHandles;
   window.escXml = escXml;
 }
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { LAYOUT_TEMPLATES, layoutSections, drawLayoutSections, escXml };
+  module.exports = { LAYOUT_TEMPLATES, layoutSections, drawLayoutSections, applyBlockOverrides, drawLayoutHandles, escXml };
 }
