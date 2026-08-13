@@ -404,6 +404,13 @@ function createWindow() {
             const clearedOk = app.state.boxWin.custom === null && app.state.boxWin.shape === 'rect';
             shapeSel.value = 'rect';
             shapeSel.dispatchEvent(new Event('change'));
+            const autoHide = canvasWrap ? canvasWrap.hidden === true : false;
+            // 再次选 custom 确认仍可弹出
+            shapeSel.value = 'custom';
+            shapeSel.dispatchEvent(new Event('change'));
+            const reOpen = canvasWrap ? canvasWrap.hidden === false : false;
+            shapeSel.value = 'rect';
+            shapeSel.dispatchEvent(new Event('change'));
             app.state.winDrawMode = true;
             const areaEl2 = document.getElementById('preview-area');
             const svgEl2 = areaEl2.querySelector('svg');
@@ -471,6 +478,7 @@ function createWindow() {
               hasWinCircle: hasWinCircle,
               hasBrushAutoOpen: autoOpen,
               hasBrushClear: clearedOk,
+              hasBrushAutoHide: autoHide && reOpen,
               hasDrawOk: drawOk,
               hasWinHandleNoLayout: htmlN.indexOf('win-handle') >= 0 && htmlN.indexOf('win-body') >= 0,
               hasCustomPath: htmlN.indexOf('fill-rule="evenodd"') >= 0 && htmlN.indexOf('<path') >= 0,
@@ -1534,7 +1542,7 @@ function createWindow() {
       sa('apiTest.setActive', dom.apiTest && dom.apiTest.activeShown === true && dom.apiTest.starShown === true);
       sa('apiTest.skipWhenNoKey', dom.apiTest && dom.apiTest.skipShown === true);
       sa('apiTest.failPath', dom.apiTest && dom.apiTest.failOk === true);
-      sa('layoutTpl.render', dom.layoutTpl && dom.layoutTpl.hasBrand === true && dom.layoutTpl.hasSell === true && dom.layoutTpl.hasSeries === true && dom.layoutTpl.hasGrid === true && dom.layoutTpl.hasDeco === true && dom.layoutTpl.hasGuochao === true && dom.layoutTpl.hasGloss === true && dom.layoutTpl.hasMetal === true && dom.layoutTpl.hasHandles === true && dom.layoutTpl.hasOverride === true && dom.layoutTpl.hasBadgeAge === true && dom.layoutTpl.hasBadgeRecycle === true && dom.layoutTpl.hasBadgeGc === true && dom.layoutTpl.hasOrigin === true && dom.layoutTpl.hasMultiWarn === true && dom.layoutTpl.hasWinEllipse === true && dom.layoutTpl.hasWinHandles === true && dom.layoutTpl.hasWinCircle === true && dom.layoutTpl.hasBrushAutoOpen === true && dom.layoutTpl.hasBrushClear === true && dom.layoutTpl.hasDrawOk === true && dom.layoutTpl.hasWinHandleNoLayout === true && dom.layoutTpl.hasCustomPath === true);
+      sa('layoutTpl.render', dom.layoutTpl && dom.layoutTpl.hasBrand === true && dom.layoutTpl.hasSell === true && dom.layoutTpl.hasSeries === true && dom.layoutTpl.hasGrid === true && dom.layoutTpl.hasDeco === true && dom.layoutTpl.hasGuochao === true && dom.layoutTpl.hasGloss === true && dom.layoutTpl.hasMetal === true && dom.layoutTpl.hasHandles === true && dom.layoutTpl.hasOverride === true && dom.layoutTpl.hasBadgeAge === true && dom.layoutTpl.hasBadgeRecycle === true && dom.layoutTpl.hasBadgeGc === true && dom.layoutTpl.hasOrigin === true && dom.layoutTpl.hasMultiWarn === true && dom.layoutTpl.hasWinEllipse === true && dom.layoutTpl.hasWinHandles === true && dom.layoutTpl.hasWinCircle === true && dom.layoutTpl.hasBrushAutoOpen === true && dom.layoutTpl.hasBrushClear === true && dom.layoutTpl.hasBrushAutoHide === true && dom.layoutTpl.hasDrawOk === true && dom.layoutTpl.hasWinHandleNoLayout === true && dom.layoutTpl.hasCustomPath === true);
       // 主进程侧：水印请求参数构造（lib/imgRequest.js 三态；buildImageRequest 已由顶部 require）
       {
         const wmBase = { model: 'm', prompt: 'p', size: '1K' };

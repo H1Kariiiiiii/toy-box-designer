@@ -302,9 +302,11 @@ async function init() {  const cfg = await window.api.getConfig();
   const winShapeEl = $('boxwin-shape');
   if (winShapeEl) winShapeEl.addEventListener('change', () => {
     state.boxWin.shape = winShapeEl.value;
+    const w2 = $('win-draw-canvas-wrap');
     if (winShapeEl.value === 'custom') {
-      const w2 = $('win-draw-canvas-wrap');
       if (w2) { w2.hidden = false; renderWinDrawCanvas(); }
+    } else if (w2) {
+      w2.hidden = true; // 切回固定形状时自动收起画板
     }
     renderLayout();
   });
