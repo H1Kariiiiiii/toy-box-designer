@@ -1,6 +1,6 @@
 {
   "name": "toy-box-designer",
-  "version": "0.4.6",
+  "version": "0.5.0",
   "description": "玩具包装盒设计 Agent - 澄海玩具电商包装设计助手（Electron MVP）",
   "main": "main.js",
   "author": "Toy Design Dept.",
