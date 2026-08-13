@@ -1314,12 +1314,23 @@ function buildSvg(scale, opts = {}) {
   }
 
   // 条码叠加到模板指定的条码面板（白底 + 缩放适配；与合规块同面板时下移避让；支持自定义大小/位置）
-  // 版面套版区块（叠在主视觉/面板之上；填内容即套版）
+  // 版面套版区块（正面 + 背板；填内容即套版；网格自动配图）
   if (state.layout && (state.layout.brand || state.layout.product || state.layout.series || state.layout.sellTitle || (state.layout.gridItems && state.layout.gridItems.length))) {
+    const tpl = LAYOUT_TEMPLATES[state.layout.template] || LAYOUT_TEMPLATES.farm;
+    const imgs = (state.generatedImages || []).map((g) => (g && g.dataUrl) || null);
     const fp = layout.panels.find((p) => p.id === layout.panel);
     if (fp) {
-      const sections = layoutSections(state.layout, { x: fp.x, y: fp.y, w: fp.w, h: fp.h });
+      const sections = layoutSections(state.layout, { x: fp.x, y: fp.y, w: fp.w, h: fp.h }, imgs, 'front');
       drawLayoutSections(parts, sections, px, off);
+    }
+    // 背板版面（模板指定面板且盒型存在：品牌条 + 网格 + 装饰条）
+    if (tpl.back && tpl.back.panel) {
+      const bp = layout.panels.find((p) => p.id === tpl.back.panel);
+      if (bp) {
+        const bl = { template: state.layout.template, brand: state.layout.brand, product: '', series: '', sellTitle: '', sellSub: '', gridItems: state.layout.gridItems, decoOn: state.layout.decoOn };
+        const bs = layoutSections(bl, { x: bp.x, y: bp.y, w: bp.w, h: bp.h }, imgs, 'back');
+        drawLayoutSections(parts, bs, px, off);
+      }
     }
   }
   if (state.barcode && layout.barcodePanel) {
