@@ -308,7 +308,7 @@ function createWindow() {
             window.__app.state.currentImage = mk('#ff8800'); // 注入主视觉图，让盒子带贴图
             await window.__mockup.renderMockup(window.__app.state.templates[window.__app.state.currentType], getSize());
             return 'ok';
-          } catch (e) { return 'ERR: ' + e.message; }
+          } catch (e) { console.log('PROBE_ERR', e.message); return 'ERR: ' + e.message; }
         })();
         await new Promise((r) => setTimeout(r, 1200)); // 等 WebGL 出帧
         // 直接读 WebGL canvas 像素（capturePage 对 WebGL 抓屏在部分 GPU 上为空，JS 侧读取才可靠）
@@ -338,6 +338,7 @@ function createWindow() {
         // 版面套版（中改）：注入版面数据 → 重渲染 → 检查 SVG 区块
         out.layoutTpl = (() => {
           try {
+            console.log('PROBE_START');
             const app = window.__app;
             app.state.layout = { template: 'farm', brand: 'FARM', product: 'Inertia Tractor', series: 'FARM SERIES', sellTitle: 'Push!', sellSub: 'To power and go', decoOn: true, gridItems: [{ no: '01', name: '拖拉机' }] };
             app.renderLayout();
@@ -400,7 +401,9 @@ function createWindow() {
             const canvasWrap = document.getElementById('win-draw-canvas-wrap');
             const autoOpen = canvasWrap ? canvasWrap.hidden === false : false;
             // 清除按钮：清掉自定义形状并回退矩形
-            document.getElementById('btn-win-draw-clear').click();
+            const clearBtn2 = document.getElementById('btn-win-draw-clear');
+            const dbgClearBtn = !!clearBtn2;
+            if (clearBtn2) clearBtn2.click();
             const clearedOk = app.state.boxWin.custom === null && app.state.boxWin.shape === 'rect';
             shapeSel.value = 'rect';
             shapeSel.dispatchEvent(new Event('change'));
@@ -442,6 +445,32 @@ function createWindow() {
             const svgN = document.querySelector('#preview-area svg');
             const htmlN = svgN ? svgN.outerHTML : '';
             app.state.layout = savedLayout;
+            // 四角等比缩放：se 手柄拖拽后宽高比应保持（40:20）
+            app.selectBoxType('kaiChuangHe');
+            app.state.boxWin = { wPct: 40, hPct: 20, xPct: 30, yPct: 30, shape: 'rect' };
+            app.renderLayout();
+            const areaR = document.getElementById('preview-area');
+            const svgR = areaR.querySelector('svg');
+            const ctmR = svgR.getScreenCTM();
+            const layoutR = app.state.templates['kaiChuangHe'].build({ w: 200, d: 130, h: 60 });
+            const fpR = layoutR.panels.find((pp) => pp.id === 'front');
+            const rsR = parseFloat(svgR.getAttribute('width')) / (layoutR.width + 6);
+            const offR = 3 * rsR;
+            const toC = (mmX, mmY) => {
+              const ux = (fpR.x + mmX) * rsR + offR, uy = (fpR.y + mmY) * rsR + offR;
+              const p = svgR.createSVGPoint(); p.x = ux; p.y = uy;
+              const q = p.matrixTransform(ctmR);
+              return { clientX: q.x, clientY: q.y };
+            };
+            const seEl = document.querySelector('[data-win="se"]');
+            const seP = toC(30 + 40, 30 + 20);
+            seEl.dispatchEvent(new MouseEvent('mousedown', { clientX: seP.clientX, clientY: seP.clientY, bubbles: true }));
+            const seEnd = toC(30 + 40 + 20, 30 + 20 + 10);
+            document.dispatchEvent(new MouseEvent('mousemove', { clientX: seEnd.clientX, clientY: seEnd.clientY, bubbles: true }));
+            document.dispatchEvent(new MouseEvent('mouseup', { clientX: seEnd.clientX, clientY: seEnd.clientY, bubbles: true }));
+            const ratio0 = 40 / 20;
+            const ratio1 = app.state.boxWin.wPct / app.state.boxWin.hPct;
+            const ratioOk = Math.abs(ratio1 - ratio0) < 0.15;
             app.state.boxWin = { wPct: 55, hPct: 60, xPct: 22.5, yPct: 8, shape: 'rect' };
             app.selectBoxType('tianDiGai');
             app.renderLayout();
@@ -477,8 +506,10 @@ function createWindow() {
               hasWinHandles: htmlWin.indexOf('win-handle') >= 0 && htmlWin.indexOf('win-body') >= 0,
               hasWinCircle: hasWinCircle,
               hasBrushAutoOpen: autoOpen,
+              dbgClearBtn: dbgClearBtn,
               hasBrushClear: clearedOk,
               hasBrushAutoHide: autoHide && reOpen,
+              hasRatioLock: ratioOk,
               hasDrawOk: drawOk,
               hasWinHandleNoLayout: htmlN.indexOf('win-handle') >= 0 && htmlN.indexOf('win-body') >= 0,
               hasCustomPath: htmlN.indexOf('fill-rule="evenodd"') >= 0 && htmlN.indexOf('<path') >= 0,
@@ -1542,7 +1573,7 @@ function createWindow() {
       sa('apiTest.setActive', dom.apiTest && dom.apiTest.activeShown === true && dom.apiTest.starShown === true);
       sa('apiTest.skipWhenNoKey', dom.apiTest && dom.apiTest.skipShown === true);
       sa('apiTest.failPath', dom.apiTest && dom.apiTest.failOk === true);
-      sa('layoutTpl.render', dom.layoutTpl && dom.layoutTpl.hasBrand === true && dom.layoutTpl.hasSell === true && dom.layoutTpl.hasSeries === true && dom.layoutTpl.hasGrid === true && dom.layoutTpl.hasDeco === true && dom.layoutTpl.hasGuochao === true && dom.layoutTpl.hasGloss === true && dom.layoutTpl.hasMetal === true && dom.layoutTpl.hasHandles === true && dom.layoutTpl.hasOverride === true && dom.layoutTpl.hasBadgeAge === true && dom.layoutTpl.hasBadgeRecycle === true && dom.layoutTpl.hasBadgeGc === true && dom.layoutTpl.hasOrigin === true && dom.layoutTpl.hasMultiWarn === true && dom.layoutTpl.hasWinEllipse === true && dom.layoutTpl.hasWinHandles === true && dom.layoutTpl.hasWinCircle === true && dom.layoutTpl.hasBrushAutoOpen === true && dom.layoutTpl.hasBrushClear === true && dom.layoutTpl.hasBrushAutoHide === true && dom.layoutTpl.hasDrawOk === true && dom.layoutTpl.hasWinHandleNoLayout === true && dom.layoutTpl.hasCustomPath === true);
+      sa('layoutTpl.render', dom.layoutTpl && dom.layoutTpl.hasBrand === true && dom.layoutTpl.hasSell === true && dom.layoutTpl.hasSeries === true && dom.layoutTpl.hasGrid === true && dom.layoutTpl.hasDeco === true && dom.layoutTpl.hasGuochao === true && dom.layoutTpl.hasGloss === true && dom.layoutTpl.hasMetal === true && dom.layoutTpl.hasHandles === true && dom.layoutTpl.hasOverride === true && dom.layoutTpl.hasBadgeAge === true && dom.layoutTpl.hasBadgeRecycle === true && dom.layoutTpl.hasBadgeGc === true && dom.layoutTpl.hasOrigin === true && dom.layoutTpl.hasMultiWarn === true && dom.layoutTpl.hasWinEllipse === true && dom.layoutTpl.hasWinHandles === true && dom.layoutTpl.hasWinCircle === true && dom.layoutTpl.hasBrushAutoOpen === true && dom.layoutTpl.hasBrushClear === true && dom.layoutTpl.hasBrushAutoHide === true && dom.layoutTpl.hasRatioLock === true && dom.layoutTpl.hasDrawOk === true && dom.layoutTpl.hasWinHandleNoLayout === true && dom.layoutTpl.hasCustomPath === true);
       // 主进程侧：水印请求参数构造（lib/imgRequest.js 三态；buildImageRequest 已由顶部 require）
       {
         const wmBase = { model: 'm', prompt: 'p', size: '1K' };

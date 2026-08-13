@@ -1799,13 +1799,39 @@ function applyWinDrag(ev) {
     } else {
       const dirX = dir.indexOf('w') >= 0 ? -1 : (dir.indexOf('e') >= 0 ? 1 : 0);
       const dirY = dir.indexOf('n') >= 0 ? -1 : (dir.indexOf('s') >= 0 ? 1 : 0);
-      if (dirX !== 0) {
-        if (dirX > 0) w = toPct(Math.max(10, win0.wPct + (dx / fp.w) * 100));
-        else { w = toPct(Math.max(10, win0.wPct - (dx / fp.w) * 100)); x = toPct(win0.xPct + (win0.wPct - w)); }
-      }
-      if (dirY !== 0) {
-        if (dirY > 0) h = toPct(Math.max(10, win0.hPct + (dy / fp.h) * 100));
-        else { h = toPct(Math.max(10, win0.hPct - (dy / fp.h) * 100)); y = toPct(win0.yPct + (win0.hPct - h)); }
+      const cw = (win0.wPct / 100) * fp.w, ch = (win0.hPct / 100) * fp.h;
+      const cx0 = (win0.xPct / 100) * fp.w, cy0 = (win0.yPct / 100) * fp.h;
+      const left0 = cx0, right0 = cx0 + cw, top0 = cy0, bottom0 = cy0 + ch;
+      if (dirX !== 0 && dirY !== 0) {
+        // 四角手柄：等比缩放（宽高比例锁定，仅改变大小）
+        const anchorX = dirX > 0 ? left0 : right0;
+        const anchorY = dirY > 0 ? top0 : bottom0;
+        const c0x = dirX > 0 ? right0 : left0, c0y = dirY > 0 ? bottom0 : top0;
+        const startDiag = Math.hypot(c0x - anchorX, c0y - anchorY);
+        if (startDiag < 1) return;
+        const ux = (c0x - anchorX) / startDiag, uy = (c0y - anchorY) / startDiag;
+        const cornerX = dirX > 0 ? right0 + dx : left0 + dx;
+        const cornerY = dirY > 0 ? bottom0 + dy : top0 + dy;
+        const proj = (cornerX - anchorX) * ux + (cornerY - anchorY) * uy;
+        const k = Math.max(proj / startDiag, 0.15); // 最小缩放 15%
+        const nW = Math.max(8, cw * k);
+        const nH = Math.max(8, ch * k);
+        const nCX = anchorX + ux * startDiag * k, nCY = anchorY + uy * startDiag * k;
+        const nCx = (anchorX + nCX) / 2, nCy = (anchorY + nCY) / 2;
+        x = toPct((nCx - nW / 2) / fp.w * 100);
+        y = toPct((nCy - nH / 2) / fp.h * 100);
+        w = toPct(nW / fp.w * 100);
+        h = toPct(nH / fp.h * 100);
+      } else {
+        // 边中点手柄：只改单维
+        if (dirX !== 0) {
+          if (dirX > 0) w = toPct(Math.max(10, win0.wPct + (dx / fp.w) * 100));
+          else { w = toPct(Math.max(10, win0.wPct - (dx / fp.w) * 100)); x = toPct(win0.xPct + (win0.wPct - w)); }
+        }
+        if (dirY !== 0) {
+          if (dirY > 0) h = toPct(Math.max(10, win0.hPct + (dy / fp.h) * 100));
+          else { h = toPct(Math.max(10, win0.hPct - (dy / fp.h) * 100)); y = toPct(win0.yPct + (win0.hPct - h)); }
+        }
       }
     }
     x = Math.min(Math.max(0, x), 95); y = Math.min(Math.max(0, y), 95);
