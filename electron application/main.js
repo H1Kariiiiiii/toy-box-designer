@@ -366,6 +366,19 @@ function createWindow() {
             const svgD = document.querySelector('#preview-area svg');
             const htmlD = svgD ? svgD.outerHTML : '';
             app.state.layout.blocks = {};
+            // 底部标志：0-3 禁婴儿/回收/垃圾桶/GC + 原产地（合规块标志区）
+            app.state.compAuto = true;
+            app.state.markets = new Set(['eu']);
+            app.state.badges = { age0to3: true, recycle: true, trash: true, gc: true };
+            app.state.compFields.origin = 'MADE IN CHINA';
+            app.renderLayout();
+            const svgBadges = document.querySelector('#preview-area svg');
+            const htmlBadges = svgBadges ? svgBadges.outerHTML : '';
+            app.state.compAuto = false;
+            app.state.markets = new Set();
+            app.state.badges = { age0to3: false, recycle: false, trash: false, gc: false };
+            app.state.compFields.origin = '';
+            app.renderLayout();
             app.renderLayout();
             const htmlDrag = htmlD;
             app.renderLayout();
@@ -381,6 +394,10 @@ function createWindow() {
               hasMetal: htmlProc.indexOf('procMetal') >= 0 && htmlProc.indexOf('url(#procMetal)') >= 0,
               hasHandles: htmlDrag.indexOf('lay-handle') >= 0 && htmlDrag.indexOf('lay-body') >= 0,
               hasOverride: htmlDrag.indexOf('data-lay="bar"') >= 0,
+              hasBadgeAge: htmlBadges.indexOf('#e30613') >= 0 && htmlBadges.indexOf('0-3') >= 0,
+              hasBadgeRecycle: htmlBadges.indexOf('#009639') >= 0,
+              hasBadgeGc: htmlBadges.indexOf('GC') >= 0,
+              hasOrigin: htmlBadges.indexOf('MADE IN CHINA') >= 0,
               svgLen: html.length,
             };
           } catch (e) { return 'ERR: ' + e.message; }
@@ -1441,7 +1458,7 @@ function createWindow() {
       sa('apiTest.setActive', dom.apiTest && dom.apiTest.activeShown === true && dom.apiTest.starShown === true);
       sa('apiTest.skipWhenNoKey', dom.apiTest && dom.apiTest.skipShown === true);
       sa('apiTest.failPath', dom.apiTest && dom.apiTest.failOk === true);
-      sa('layoutTpl.render', dom.layoutTpl && dom.layoutTpl.hasBrand === true && dom.layoutTpl.hasSell === true && dom.layoutTpl.hasSeries === true && dom.layoutTpl.hasGrid === true && dom.layoutTpl.hasDeco === true && dom.layoutTpl.hasGuochao === true && dom.layoutTpl.hasGloss === true && dom.layoutTpl.hasMetal === true && dom.layoutTpl.hasHandles === true && dom.layoutTpl.hasOverride === true);
+      sa('layoutTpl.render', dom.layoutTpl && dom.layoutTpl.hasBrand === true && dom.layoutTpl.hasSell === true && dom.layoutTpl.hasSeries === true && dom.layoutTpl.hasGrid === true && dom.layoutTpl.hasDeco === true && dom.layoutTpl.hasGuochao === true && dom.layoutTpl.hasGloss === true && dom.layoutTpl.hasMetal === true && dom.layoutTpl.hasHandles === true && dom.layoutTpl.hasOverride === true && dom.layoutTpl.hasBadgeAge === true && dom.layoutTpl.hasBadgeRecycle === true && dom.layoutTpl.hasBadgeGc === true && dom.layoutTpl.hasOrigin === true);
       // 主进程侧：水印请求参数构造（lib/imgRequest.js 三态；buildImageRequest 已由顶部 require）
       {
         const wmBase = { model: 'm', prompt: 'p', size: '1K' };

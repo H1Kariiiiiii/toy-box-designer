@@ -18,10 +18,11 @@ const state = {
   markets: new Set(), // 目标市场（cn/eu/us）
   compDone: new Set(),// 已勾选的合规项
   compAuto: false,    // 自动排版合规信息到展开图
-  compFields: { name: '', sku: '', material: '', standard: 'GB 6675', maker: '', warning: '' },
+  compFields: { name: '', sku: '', material: '', standard: 'GB 6675', maker: '', warning: '', origin: '' },
   layout: { template: 'farm', brand: '', product: '', series: '', sellTitle: '', sellSub: '', gridItems: [], decoOn: true, blocks: {} }, // 版面套版（中改）；blocks=拖拽位置覆盖（大改）
   process: 'none', // 工艺预览：none|matte|gloss|uv|gold|silver（仅预览模拟，不入导出/存档）
   boxWin: { wPct: 55, hPct: 60, xPct: 22.5, yPct: 8 }, // 开窗窗口（% 占正面面板；小改：窗口可调）
+  badges: { age0to3: false, recycle: false, trash: false, gc: false }, // 底部标志（合规块右侧；CE/CCC 按市场自动）
   batchMode: false,   // 当前结果区是否处于批量方案模式
   schemes: [],        // 当前批量方案 [{ seed, images }]
   schemeArchive: [],  // 历史方案库（manifest）
@@ -255,7 +256,7 @@ async function init() {  const cfg = await window.api.getConfig();
     $(id).addEventListener('input', updateBarcode);
   });
   $('comp-auto').addEventListener('change', () => { state.compAuto = $('comp-auto').checked; renderLayout(); });
-  ['comp-name', 'comp-sku', 'comp-material', 'comp-standard', 'comp-maker', 'comp-warning'].forEach((id) => {
+  ['comp-name', 'comp-sku', 'comp-material', 'comp-standard', 'comp-maker', 'comp-warning', 'comp-origin'].forEach((id) => {
     $(id).addEventListener('input', () => { state.compFields[id.replace('comp-', '')] = $(id).value.trim(); renderLayout(); });
   });
   $('btn-import-scheme').addEventListener('click', importSchemeFile);
@@ -295,6 +296,10 @@ async function init() {  const cfg = await window.api.getConfig();
       state.boxWin = { wPct: num($('boxwin-w').value), hPct: num($('boxwin-h').value), xPct: num($('boxwin-x').value), yPct: num($('boxwin-y').value) };
       renderLayout();
     });
+  });
+  ['badge-age0to3', 'badge-recycle', 'badge-trash', 'badge-gc'].forEach((bid) => {
+    const bel = $(bid);
+    if (bel) bel.addEventListener('change', () => { state.badges[bid.replace('badge-', '')] = bel.checked; renderLayout(); });
   });
   const processEl = $('process-select');
   if (processEl) processEl.addEventListener('change', () => { state.process = processEl.value; renderLayout(); });
@@ -831,6 +836,7 @@ async function renderSchemes() {
           barcode: state.barcode,
           bleed: $('opt-bleed').checked,
           layout: state.layout,
+          badges: state.badges,
         });
         if (r && r.ok) {
           status.textContent = '✅ 方案已更新（当前条码/合规/尺寸等状态已存入）';
@@ -908,7 +914,7 @@ async function loadScheme(rec) {
     if (compAutoEl) compAutoEl.checked = compAutoOn;
     if (rec.compFields && typeof rec.compFields === 'object') {
       state.compFields = { name: '', sku: '', material: '', standard: '', maker: '', warning: '' };
-      for (const fk of ['name', 'sku', 'material', 'standard', 'maker', 'warning']) {
+      for (const fk of ['name', 'sku', 'material', 'standard', 'maker', 'warning', 'origin']) {
         if (typeof rec.compFields[fk] === 'string' && rec.compFields[fk]) {
           state.compFields[fk] = rec.compFields[fk];
           const fiel = $('comp-' + fk);
@@ -939,6 +945,12 @@ async function loadScheme(rec) {
       setV('layout-grid', state.layout.gridItems.map((g) => (g.no || '') + ',' + (g.name || '')).join('\n'));
       const ld = $('layout-deco');
       if (ld) ld.checked = state.layout.decoOn;
+    }
+    if (rec.badges && typeof rec.badges === 'object') {
+      state.badges = { age0to3: false, recycle: false, trash: false, gc: false, ...rec.badges };
+      const setB = (id, k) => { const el = $(id); if (el) el.checked = !!state.badges[k]; };
+      setB('badge-age0to3', 'age0to3'); setB('badge-recycle', 'recycle');
+      setB('badge-trash', 'trash'); setB('badge-gc', 'gc');
     }
     if (rec.barcode && rec.barcode.format && rec.barcode.value) {
       const bf = $('barcode-format'), bv = $('barcode-value'), be = $('barcode-enabled');
@@ -1203,10 +1215,18 @@ function drawComplianceBlock(parts, layout, px, off) {
   const f = state.compFields;
   const rows = [
     ['品名', f.name], ['货号', f.sku], ['材质', f.material],
-    ['执行标准', f.standard], ['制造商', f.maker], ['警告', f.warning],
+    ['执行标准', f.standard], ['制造商', f.maker], ['警告', f.warning], ['原产地', f.origin],
   ].filter((r) => r[1]);
-  const hasFlags = state.markets.size > 0;
-  if (!rows.length && !hasFlags) return;
+  // 底部标志列表：CE/CCC 按市场自动 + 手动勾选（0-3 禁婴儿/回收/垃圾桶/海湾 GC）
+  const badges = [];
+  if (state.markets.has('eu')) badges.push('ce');
+  if (state.markets.has('cn')) badges.push('ccc');
+  const bl = state.badges || {};
+  if (bl.age0to3) badges.push('age0to3');
+  if (bl.recycle) badges.push('recycle');
+  if (bl.trash) badges.push('trash');
+  if (bl.gc) badges.push('gc');
+  if (!rows.length && !badges.length) return;
 
   const bx = px(p.x) + off + px(5);
   const bw = px(p.w) - px(10);
@@ -1222,7 +1242,7 @@ function drawComplianceBlock(parts, layout, px, off) {
   parts.push(`<rect x="${bx}" y="${by}" width="${bw}" height="${bh}" rx="${px(2)}" fill="#f4f6f8" stroke="#c9d2dc" stroke-width="${px(0.25)}"/>`);
 
   const lh = fs * 1.55;
-  const flagW = hasFlags ? bh * 1.05 : 0; // 预留标志区
+  const flagW = badges.length ? bh * 1.05 : 0; // 预留标志区
   const maxTextW = bw - px(10) - flagW;
   let ty = by + lh;
 
@@ -1237,22 +1257,55 @@ function drawComplianceBlock(parts, layout, px, off) {
     if (ty > by + bh - lh * 0.4) break;
   }
 
-  if (hasFlags) {
-    const d = bh * 0.5;
+  if (badges.length) {
+    const n = badges.length;
+    const d = Math.min(bh * 0.5, (bw - px(10)) / (n * 1.25));
     const fy = by + px(4);
-    let fx = bx + bw - d - px(4);
-    const cx = fx + d / 2;
-    const cy = fy + d / 2;
-    if (state.markets.has('eu')) {
-      parts.push(`<circle cx="${cx}" cy="${cy}" r="${d / 2}" fill="none" stroke="#1f2630" stroke-width="${Math.max(1, d * 0.07)}"/>`);
-      parts.push(`<text x="${cx}" y="${cy + d * 0.28}" text-anchor="middle" font-size="${d * 0.5}" font-weight="bold" fill="#1f2630">CE</text>`);
-      fx -= d + px(3);
+    let fx = bx + bw - d / 2 - px(4);
+    for (const b of badges) {
+      drawBadge(parts, b, fx, fy + d / 2, d);
+      fx -= d * 1.25;
     }
-    if (state.markets.has('cn')) {
-      const c2x = fx + d / 2;
-      parts.push(`<circle cx="${c2x}" cy="${cy}" r="${d / 2}" fill="none" stroke="#1f2630" stroke-width="${Math.max(1, d * 0.07)}"/>`);
-      parts.push(`<text x="${c2x}" y="${cy + d * 0.24}" text-anchor="middle" font-size="${d * 0.4}" font-weight="bold" fill="#1f2630">CCC</text>`);
+  }
+}
+
+/** 合规标志绘制（底部标志：CE/CCC/0-3 禁婴儿/回收/垃圾桶/海湾 GC） */
+function drawBadge(parts, type, cx, cy, d) {
+  const r = d / 2;
+  if (type === 'ce') {
+    parts.push(`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#1f2630" stroke-width="${Math.max(1, d * 0.07)}"/>`);
+    parts.push(`<text x="${cx}" y="${cy + d * 0.28}" text-anchor="middle" font-size="${d * 0.5}" font-weight="bold" fill="#1f2630">CE</text>`);
+  } else if (type === 'ccc') {
+    parts.push(`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#1f2630" stroke-width="${Math.max(1, d * 0.07)}"/>`);
+    parts.push(`<text x="${cx}" y="${cy + d * 0.24}" text-anchor="middle" font-size="${d * 0.4}" font-weight="bold" fill="#1f2630">CCC</text>`);
+  } else if (type === 'age0to3') {
+    // 红色 0-3 禁婴儿（婴儿头+身+斜杠+0-3）
+    parts.push(`<circle cx="${cx}" cy="${cy}" r="${r}" fill="#e30613"/>`);
+    parts.push(`<circle cx="${cx - r * 0.25}" cy="${cy - r * 0.18}" r="${r * 0.2}" fill="#ffffff"/>`);
+    parts.push(`<ellipse cx="${cx - r * 0.25}" cy="${cy + r * 0.28}" rx="${r * 0.26}" ry="${r * 0.3}" fill="#ffffff"/>`);
+    parts.push(`<line x1="${cx - r * 0.72}" y1="${cy + r * 0.72}" x2="${cx + r * 0.72}" y2="${cy - r * 0.72}" stroke="#ffffff" stroke-width="${d * 0.08}" stroke-linecap="round"/>`);
+    parts.push(`<text x="${cx + r * 0.3}" y="${cy + r * 0.34}" text-anchor="middle" font-size="${d * 0.4}" font-weight="bold" fill="#ffffff">0-3</text>`);
+  } else if (type === 'recycle') {
+    // 绿色回收（三箭头 120° 旋转近似）
+    parts.push(`<circle cx="${cx}" cy="${cy}" r="${r}" fill="#009639"/>`);
+    const ap = `M ${cx} ${cy - r * 0.72} L ${cx + r * 0.18} ${cy - r * 0.2} L ${cx - r * 0.18} ${cy - r * 0.2} Z`;
+    for (let i = 0; i < 3; i++) {
+      parts.push(`<path d="${ap}" fill="#ffffff" transform="rotate(${i * 120} ${cx} ${cy})"/>`);
     }
+    parts.push(`<circle cx="${cx}" cy="${cy}" r="${r * 0.14}" fill="#009639"/>`);
+  } else if (type === 'trash') {
+    // 垃圾桶（WEEE：桶+盖+轮+红叉）
+    parts.push(`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#1f2630" stroke-width="${Math.max(1, d * 0.06)}"/>`);
+    parts.push(`<line x1="${cx - r * 0.5}" y1="${cy - r * 0.3}" x2="${cx + r * 0.5}" y2="${cy - r * 0.3}" stroke="#1f2630" stroke-width="${d * 0.08}" stroke-linecap="round"/>`);
+    parts.push(`<rect x="${cx - r * 0.34}" y="${cy - r * 0.16}" width="${r * 0.68}" height="${r * 0.58}" fill="none" stroke="#1f2630" stroke-width="${d * 0.07}"/>`);
+    parts.push(`<circle cx="${cx - r * 0.17}" cy="${cy + r * 0.52}" r="${r * 0.1}" fill="none" stroke="#1f2630" stroke-width="${d * 0.05}"/>`);
+    parts.push(`<circle cx="${cx + r * 0.17}" cy="${cy + r * 0.52}" r="${r * 0.1}" fill="none" stroke="#1f2630" stroke-width="${d * 0.05}"/>`);
+    parts.push(`<line x1="${cx - r * 0.24}" y1="${cy - r * 0.42}" x2="${cx + r * 0.24}" y2="${cy + r * 0.42}" stroke="#e30613" stroke-width="${d * 0.06}"/>`);
+    parts.push(`<line x1="${cx + r * 0.24}" y1="${cy - r * 0.42}" x2="${cx - r * 0.24}" y2="${cy + r * 0.42}" stroke="#e30613" stroke-width="${d * 0.06}"/>`);
+  } else if (type === 'gc') {
+    // 海湾认证 GC（圆角方块 + GC）
+    parts.push(`<rect x="${cx - r}" y="${cy - r}" width="${d}" height="${d}" rx="${r * 0.28}" fill="none" stroke="#1f2630" stroke-width="${d * 0.08}"/>`);
+    parts.push(`<text x="${cx}" y="${cy + d * 0.3}" text-anchor="middle" font-size="${d * 0.52}" font-weight="bold" fill="#1f2630">GC</text>`);
   }
 }
 
