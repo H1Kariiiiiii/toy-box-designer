@@ -629,6 +629,41 @@ function createWindow() {
           hasDieLine: withBleed.includes('stroke-dasharray="10 6"'),
         };
 
+        // v0.6.2：天地盖公差（盖比底大 2×tol）+ 印刷稿刀线专色（dieSpot → 100% Magenta）
+        out.tolerance = (() => {
+          const bt = window.BoxTemplates.tianDiGai;
+          // 无 tol → 默认 1.5；显式 tol:0 → 盖底同尺寸（原行为）；tol 越大盖越大
+          const base = bt.build({ w: 200, d: 130, h: 60, tol: 0 });
+          const def = bt.build({ w: 200, d: 130, h: 60 });
+          const tol1 = bt.build({ w: 200, d: 130, h: 60, tol: 1.5 });
+          const tol3 = bt.build({ w: 200, d: 130, h: 60, tol: 3 });
+          const lid = (l) => l.panels.find((p) => p.id === 'lidTop');
+          const bottom = (l) => l.panels.find((p) => p.id === 'boxBottom');
+          return {
+            sameWhenTol0: lid(base).w === bottom(base).w && lid(base).h === bottom(base).h,
+            defaultApplied: Math.round(lid(def).w - bottom(def).w) === 3 && Math.round(lid(def).h - bottom(def).h) === 3,
+            lidBigger15: Math.round(lid(tol1).w - bottom(tol1).w) === 3 && Math.round(lid(tol1).h - bottom(tol1).h) === 3,
+            lidBigger3: Math.round(lid(tol3).w - bottom(tol3).w) === 6 && Math.round(lid(tol3).h - bottom(tol3).h) === 6,
+            widthGrows: tol3.width > tol1.width && tol1.width > base.width,
+            tolField: !!document.getElementById('size-tol'),
+            tolDisabledOnOther: (() => { const el = document.getElementById('size-tol'); return el ? el.disabled === true : false; })(), // 当前已切开窗盒 → 公差输入应禁用
+          };
+        })();
+        // 印刷稿刀线专色：dieSpot=true 时面板轮廓为 #ff00ff（100% Magenta 模切约定色），折线仍橙色虚线
+        out.dieSpot = (() => {
+          const prev = window.__app.state.currentType;
+          window.__app.state.currentType = 'tianDiGai';
+          const normal = window.__app.buildSvg(2, { bleed: 0 });
+          const spot = window.__app.buildSvg(2, { bleed: 0, dieSpot: true });
+          window.__app.state.currentType = prev;
+          return {
+            previewNoMagenta: !normal.includes('#ff00ff'),
+            spotUsesMagenta: spot.includes('#ff00ff'),
+            foldStillOrange: spot.includes('#ff8c4f'),
+            bleedKeepsDash: window.__app.buildSvg(2, { bleed: 3, dieSpot: true }).includes('stroke-dasharray="10 6"'),
+          };
+        })();
+
         // 生成链路参数（不真调 API，仅验证 generate 前置读取）
         document.getElementById('req-seed').value = '42';
         out.seedRead = window.__app.state.lastSeed === null; // 初始 lastSeed 为 null
@@ -1550,6 +1585,18 @@ function createWindow() {
       sa('barcode.ean', dom.barcodeLogic && dom.barcodeLogic.valid13 === true && dom.barcodeLogic.invalid13 === false);
       sa('barcode.badCheckNotDrawn', dom.barcodeLogic && dom.barcodeLogic.makeInvalidCheck && dom.barcodeLogic.makeInvalidCheck.drew === false);
       sa('exportDims.match', dom.exportDims && dom.exportDims.matches === true);
+      // v0.6.2：天地盖公差 + 印刷稿刀线专色
+      sa('tolerance.sameWhenTol0', dom.tolerance && dom.tolerance.sameWhenTol0 === true);
+      sa('tolerance.defaultApplied', dom.tolerance && dom.tolerance.defaultApplied === true);
+      sa('tolerance.lidBigger15', dom.tolerance && dom.tolerance.lidBigger15 === true);
+      sa('tolerance.lidBigger3', dom.tolerance && dom.tolerance.lidBigger3 === true);
+      sa('tolerance.widthGrows', dom.tolerance && dom.tolerance.widthGrows === true);
+      sa('tolerance.fieldExists', dom.tolerance && dom.tolerance.tolField === true);
+      sa('tolerance.disabledOnOtherBox', dom.tolerance && dom.tolerance.tolDisabledOnOther === true);
+      sa('dieSpot.previewNoMagenta', dom.dieSpot && dom.dieSpot.previewNoMagenta === true);
+      sa('dieSpot.spotUsesMagenta', dom.dieSpot && dom.dieSpot.spotUsesMagenta === true);
+      sa('dieSpot.foldStillOrange', dom.dieSpot && dom.dieSpot.foldStillOrange === true);
+      sa('dieSpot.bleedKeepsDash', dom.dieSpot && dom.dieSpot.bleedKeepsDash === true);
       sa('qc.okNoFails', dom.qc && dom.qc.okNoFails === true);
       sa('qc.failWhenNoImage', dom.qc && dom.qc.failWhenNoImage === true);
       sa('pdfx.export', dom.pdfx && dom.pdfx.export && dom.pdfx.export.hasPdfxMarker === true && typeof dom.pdfx.export.trimInset === 'number' && Math.abs(dom.pdfx.export.trimInset - 8.5039) < 0.005);

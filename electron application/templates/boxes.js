@@ -18,23 +18,28 @@
 const mm = (n) => n; // 单位即 mm，保留此函数便于日后切换像素密度
 
 function buildTianDiGai(s) {
-  const W = s.w, D = s.d, H = s.h; // 宽、深、高
+  const W = s.w, D = s.d, H = s.h; // 宽、深、高（底净尺寸）
   const flap = 15;                 // 折边宽
   const gap = 40;                  // 盖与底之间的间距
+  // P0-3（v0.6.2）：盖公差（每边 mm）= 纸厚 + 装配间隙。天地盖工艺铁律：
+  // 盖内径必须大于底外径（+2×公差），否则盖子插不进去。默认 1.5mm/边（≈1mm 纸板 + 0.5mm 间隙）。
+  const tol = (Number.isFinite(Number(s.tol)) && s.tol >= 0 && s.tol <= 10) ? Number(s.tol) : 1.5;
+  const Wl = W + 2 * tol;          // 盖长
+  const Dl = D + 2 * tol;          // 盖宽
   const P = (id, label, x, y, w, h, kind, foldEdges = []) => ({ id, label, x, y, w, h, kind, foldEdges });
 
-  // —— 盖（上）——
-  const lidTop = P('lidTop', '盖面（主视觉）', flap + H, flap + H, W, D, 'face');
-  const lidUp = P('lidUp', '盖围边', flap + H, flap, W, H, 'side', ['bottom']);
-  const lidUpFlap = P('lidUpFlap', '折边', flap + H, 0, W, flap, 'flap', ['bottom']);
-  const lidDown = P('lidDown', '盖围边', flap + H, flap + H + D, W, H, 'side', ['top']);
-  const lidDownFlap = P('lidDownFlap', '折边', flap + H, flap + H + D + H, W, flap, 'flap', ['top']);
-  const lidLeft = P('lidLeft', '盖围边', flap, flap + H, H, D, 'side', ['right']);
-  const lidLeftFlap = P('lidLeftFlap', '折边', 0, flap + H, flap, D, 'flap', ['right']);
-  const lidRight = P('lidRight', '盖围边', flap + H + W, flap + H, H, D, 'side', ['left']);
-  const lidRightFlap = P('lidRightFlap', '折边', flap + H + W + H, flap + H, flap, D, 'flap', ['left']);
+  // —— 盖（上，按盖净尺寸 Wl×Dl）——
+  const lidTop = P('lidTop', '盖面（主视觉）', flap + H, flap + H, Wl, Dl, 'face');
+  const lidUp = P('lidUp', '盖围边', flap + H, flap, Wl, H, 'side', ['bottom']);
+  const lidUpFlap = P('lidUpFlap', '折边', flap + H, 0, Wl, flap, 'flap', ['bottom']);
+  const lidDown = P('lidDown', '盖围边', flap + H, flap + H + Dl, Wl, H, 'side', ['top']);
+  const lidDownFlap = P('lidDownFlap', '折边', flap + H, flap + H + Dl + H, Wl, flap, 'flap', ['top']);
+  const lidLeft = P('lidLeft', '盖围边', flap, flap + H, H, Dl, 'side', ['right']);
+  const lidLeftFlap = P('lidLeftFlap', '折边', 0, flap + H, flap, Dl, 'flap', ['right']);
+  const lidRight = P('lidRight', '盖围边', flap + H + Wl, flap + H, H, Dl, 'side', ['left']);
+  const lidRightFlap = P('lidRightFlap', '折边', flap + H + Wl + H, flap + H, flap, Dl, 'flap', ['left']);
 
-  // —— 底（下）——
+  // —— 底（下，按底净尺寸 W×D）——
   // baseY 需把 boxUp（高 H）也计入间距：boxUp 顶 = lidDownFlap 底 + gap，否则 boxUp 会与盖的下折边重叠
   const baseY = lidDownFlap.y + flap + gap + H;
   const boxBottom = P('boxBottom', '底面', flap + H, baseY, W, D, 'face');
@@ -48,14 +53,15 @@ function buildTianDiGai(s) {
   const boxRightFlap = P('boxRightFlap', '折边', flap + H + W + H, baseY, flap, D, 'flap', ['left']);
 
   return {
-    width: flap * 2 + H * 2 + W,
+    width: flap * 2 + H * 2 + Wl,
     height: baseY + D + H + flap,
     panels: [lidTop, lidUp, lidUpFlap, lidDown, lidDownFlap, lidLeft, lidLeftFlap, lidRight, lidRightFlap,
              boxBottom, boxUp, boxUpFlap, boxDown, boxDownFlap, boxLeft, boxLeftFlap, boxRight, boxRightFlap],
     panel: 'lidTop', // 主视觉面板
     barcodePanel: 'boxBottom', // 条码放置面板
     compliancePanel: 'lidUp', // 合规信息块放置面板（盖后围边）
-    // 3D mockup：盒子长(X)×高(Y)×深(Z)，六面分别对应展开图面板（null=该面留空）
+    toleranceMm: tol, // 盖公差（每边 mm，v0.6.2）
+    // 3D mockup：盒子按底净尺寸展示（盖比底大是装配关系，3D 展示底外廓即可）
     mockup3d: {
       dims: { x: W, y: H, z: D },
       faces: { top: 'lidTop', bottom: 'boxBottom', front: 'lidDown', back: 'lidUp', left: 'lidLeft', right: 'lidRight' },

@@ -200,9 +200,10 @@ svg { display: block; width: ${winW}in !important; height: ${winH}in !important;
       '-sColorConversionStrategy=CMYK', '-dAutoRotatePages=/None',
       // 位图压缩：Chromium printToPDF 会把 SVG 页面按 720dpi 栅格化（1.7 亿像素级），
       // 直接输出会让 PDF 膨胀到 7-14MB、查看器打开白屏数秒。三步处理：
-      // 1) DCTEncode(JPEG Q90) 压缩位图（默认 Flate 对照片无效）；2) 降采样到印刷标准 300dpi
-      // （720dpi 是打印冗余，300dpi 视觉无损）；3) 灰度/单色同规则
-      '-dAutoFilterColorImages=false', '-dColorImageFilter=/DCTEncode', '-dJPEGQ=90',
+      // 1) DCTEncode(JPEG Q95) 压缩位图（默认 Flate 对照片无效；Q95 较 Q90 改善小字文字边缘振铃，
+      //    合规块最小字号 8px 在 300dpi 下仅 ~33px 高，JPEG 伪影会直接糊字）；2) 降采样到印刷标准
+      //    300dpi（720dpi 是打印冗余，300dpi 视觉无损）；3) 灰度/单色同规则
+      '-dAutoFilterColorImages=false', '-dColorImageFilter=/DCTEncode', '-dJPEGQ=95',
       '-dDownsampleColorImages=true', '-dColorImageResolution=300',
       '-dAutoFilterGrayImages=false', '-dGrayImageFilter=/DCTEncode',
       '-dDownsampleGrayImages=true', '-dGrayImageResolution=300',

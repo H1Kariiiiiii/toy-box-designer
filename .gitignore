@@ -14,6 +14,9 @@ ps-plugin/build/
 .reasonix/
 reasonix.toml
 
+# ===== DSH 视觉工具临时目录（粘贴图片缓存） =====
+.dsh-vision-toolkit/
+
 # ===== 随机/临时/系统文件 =====
 .rnd
 *.log

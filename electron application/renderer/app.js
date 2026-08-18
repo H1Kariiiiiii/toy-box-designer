@@ -429,6 +429,11 @@ function selectBoxType(id) {
   $('size-d').value = t.defaultSize.d;
   $('size-h').value = t.defaultSize.h;
   $('preview-name').textContent = t.name;
+  // 盖公差仅天地盖生效：切换盒型时提示可见性同步
+  const tolInput = $('size-tol');
+  const tolHint = $('box-tol-hint');
+  if (tolInput) tolInput.disabled = id !== 'tianDiGai';
+  if (tolHint) tolHint.style.opacity = id === 'tianDiGai' ? '1' : '0.45';
   const winSet = $('boxwin-settings');
   if (winSet) winSet.hidden = id !== 'kaiChuangHe'; // 窗口可调仅开窗盒
   if (state.layout && state.layout.blocks) state.layout.blocks = {}; // 切换盒型清空区块拖拽位置（避免跨盒型残留）
@@ -445,7 +450,8 @@ function updateBoxSizeText() {
   const st = $('box-size-text');
   if (st && t) {
     const s = getSize();
-    st.textContent = `当前：${t.name}（${s.w} × ${s.d} × ${s.h} mm）— 长 × 宽 × 高，可到「盒型」页调整`;
+    const tolNote = state.currentType === 'tianDiGai' ? `（盖公差 +${s.tol}mm/边）` : '';
+    st.textContent = `当前：${t.name}（${s.w} × ${s.d} × ${s.h} mm）${tolNote}— 长 × 宽 × 高，可到「盒型」页调整`;
   }
 }
 
@@ -459,6 +465,7 @@ function getSize() {
     w: clamp($('size-w').value, 20, 500, 200),
     d: clamp($('size-d').value, 20, 500, 130),
     h: clamp($('size-h').value, 10, 500, 60),
+    tol: clamp($('size-tol').value, 0, 10, 1.5), // 盖公差（mm/边，仅天地盖生效；v0.6.2）
     win: state.boxWin, // 开窗窗口参数（仅开窗盒使用；其他盒型忽略）
   };
 }
@@ -470,7 +477,8 @@ function updateQuickStatus() {
   if (el('qs-box') && t) el('qs-box').textContent = t.name;
   if (el('qs-size')) {
     const s = getSize();
-    el('qs-size').textContent = `${s.w} × ${s.d} × ${s.h} mm`;
+    const tolNote = state.currentType === 'tianDiGai' ? `（盖+${s.tol}）` : '';
+    el('qs-size').textContent = `${s.w} × ${s.d} × ${s.h} mm${tolNote}`;
   }
   if (el('qs-img')) {
     const ratio = document.getElementById('cfg-ratio').value;
@@ -1269,13 +1277,14 @@ function drawComplianceBlock(parts, layout, px, off) {
 
   const bx = px(p.x) + off + px(5);
   const bw = px(p.w) - px(10);
-  // 块高按行数自适应：优先保证行数完整显示（字号下限 6px）；与条码同面板时上限 50%（H3 条码区从 50% 起），否则 85%
+  // 块高按行数自适应：优先保证行数完整显示（字号下限 8px；v0.6.2 由 6px 上调——
+  // 印刷稿是 300dpi 位图，6px≈1.5pt 小字经 JPEG 压缩会发糊，8px≈2pt 是位图文字的清晰度下限）
   const panelH = px(p.h);
   const sharedBarcode = layout.barcodePanel === pid && !!state.barcode;
   const maxBh = panelH * (sharedBarcode ? 0.5 : 0.85);
-  let fs = Math.max(6, px(p.w) * 0.032); // 字号随面板宽
+  let fs = Math.max(8, px(p.w) * 0.032); // 字号随面板宽
   const fit = (s) => rows.length * (s * 1.55) + s * 1.55 * 0.5 <= maxBh;
-  while (fs > 6 && !fit(fs)) fs -= 1;
+  while (fs > 8 && !fit(fs)) fs -= 1;
   const bh = Math.min(maxBh, Math.max(panelH * 0.46, rows.length * (fs * 1.55) + fs * 1.55 * 0.5));
   const by = px(p.y) + off + px(4);
   parts.push(`<rect x="${bx}" y="${by}" width="${bw}" height="${bh}" rx="${px(2)}" fill="#f4f6f8" stroke="#c9d2dc" stroke-width="${px(0.25)}"/>`);
@@ -1369,6 +1378,11 @@ function buildSvg(scale, opts = {}) {
   const bleed = opts.bleed || 0; // mm 出血
   const showLabel = opts.showLabel !== false;
   const proc = opts.process || 'none'; // 工艺预览模拟：none|matte|gloss|uv|gold|silver // 预览显示尺寸标注；导出/3D 贴图去掉
+  // v0.6.2：dieSpot=true 时刀线（面板轮廓/窗口挖孔）用约定专色 100% Magenta（#ff00ff，
+  // 印刷业 CutContour 惯例色），供 PDF/X 印刷稿使用——印厂按品红实线开模切版；
+  // 折线/出血框保持橙色虚线（线型区分刀线/折线）。屏幕预览（PNG）保持原配色。
+  const dieSpot = !!opts.dieSpot;
+  const DIE_COLOR = '#ff00ff'; // 100% Magenta，模切专色约定
   const t = state.templates[state.currentType];
   const layout = t.build(getSize());
   const px = (v) => v * scale;
@@ -1417,7 +1431,8 @@ function buildSvg(scale, opts = {}) {
   for (const p of layout.panels) {
     const x = px(p.x) + off, y = px(p.y) + off, w = px(p.w), h = px(p.h);
     let fill = TC.panelFill;
-    let stroke = TC.panelStroke;
+    // 刀线颜色：dieSpot（印刷稿）用 100% Magenta 专色约定；预览/PNG 用主题色
+    let stroke = dieSpot ? DIE_COLOR : TC.panelStroke;
     let strokeW = 1.6;
 
     if (p.kind === 'face') {
@@ -1431,10 +1446,10 @@ function buildSvg(scale, opts = {}) {
       fill = TC.side;
     } else if (p.kind === 'flap') {
       fill = TC.flap;
-      stroke = TC.flapStroke;
+      if (!dieSpot) stroke = TC.flapStroke;
     } else if (p.kind === 'window') {
       fill = TC.windowFill;
-      stroke = TC.windowStroke;
+      if (!dieSpot) stroke = TC.windowStroke;
       strokeW = 2;
     }
 
@@ -2197,7 +2212,7 @@ function runQualityCheck() {
       const p = pid && layout.panels.find((x) => x.id === pid);
       if (p) {
         const rowCount = Object.values(state.compFields).filter((v) => v && v.trim()).length;
-        const fs = Math.max(6, p.w * 0.032);
+        const fs = Math.max(8, p.w * 0.032); // 与 drawComplianceBlock 同一套计算（v0.6.2 下限 8px）
         const sharedBarcode = layout.barcodePanel === pid && !!state.barcode;
         const maxBh = p.h * (sharedBarcode ? 0.5 : 0.85);
         const needH = rowCount * (fs * 1.55) + fs * 1.55 * 0.5;
@@ -2391,7 +2406,8 @@ async function exportPdfX() {
   const layout = t.build(getSize());
   const scale = 300 / 25.4;
   const bleed = 3; // 印刷稿恒带出血
-  const svg = buildSvg(scale, { bleed, showLabel: false });
+  // v0.6.2：印刷稿刀线用约定专色（100% Magenta CutContour），印厂可按品红实线开模切版
+  const svg = buildSvg(scale, { bleed, showLabel: false, dieSpot: true });
   const widthMm = layout.width + bleed * 2;
   const heightMm = layout.height + bleed * 2;
 
