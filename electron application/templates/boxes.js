@@ -99,6 +99,16 @@ function buildKaiChuangHe(s) {
   const right = P('right', '侧面', flap + H + W, H + flap, H, D, 'side', ['left']);
   const rightFlap = P('rightFlap', '插舌', flap + H + W + H, H + flap, flap, D, 'flap', ['left']);
 
+  // v0.7.0：顶部提手（挂孔）——顶面 top 面板上挖半圆孔（站立展示盒挂墙展示用）
+  // 配置在 s.win.handle（getSize 返回 win=state.boxWin）：{ on, w, h, x }：on=启用，w=宽，h=孔深，x=水平位置%
+  const hcfg = (wcfg && wcfg.handle) || {};
+  const handle = {
+    on: hcfg.on === true,
+    w: Math.min(W - 8, Math.max(14, Number.isFinite(Number(hcfg.w)) ? Number(hcfg.w) : 22)),
+    h: Math.min(H * 0.6, Math.max(8, Number.isFinite(Number(hcfg.h)) ? Number(hcfg.h) : 11)),
+    x: Number.isFinite(Number(hcfg.x)) ? Math.min(100, Math.max(0, Number(hcfg.x))) : 50,
+  };
+
   return {
     width: flap + H * 2 + W + flap,
     height: flap + H * 2 + D + flap,
@@ -106,6 +116,7 @@ function buildKaiChuangHe(s) {
     panel: 'front',
     barcodePanel: 'bottom',
     compliancePanel: 'bottom', // 与条码同面板，绘制时上下分区
+    handle: handle, // v0.7.0：提手配置（top 面板挖孔）
     // 开窗盒为站立展示盒：长(W)×高(D)×深(H)；背面无设计，留空
     mockup3d: {
       dims: { x: W, y: D, z: H },

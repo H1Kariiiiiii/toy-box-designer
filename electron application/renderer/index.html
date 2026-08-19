@@ -105,7 +105,27 @@
                 <label class="full">系列网格（每行：编号,名称）
                   <textarea id="layout-grid" rows="2" placeholder="01,拖拉机&#10;02,拖车"></textarea>
                 </label>
+                <label class="full">品牌 logo 图片（PNG/SVG，透明底最佳；有图时品牌条显示图片）
+                  <span style="display:flex;gap:6px;align-items:center">
+                    <input id="layout-logo" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" />
+                    <img id="layout-logo-preview" class="logo-preview" style="display:none" alt="logo" />
+                    <button id="layout-logo-clear" class="mini-btn" type="button" title="清除 logo">✕</button>
+                  </span>
+                </label>
+                <label class="full">功能徽章（勾选后排在品牌条下方，可拖拽）
+                  <span class="badge-pick">
+                    <label class="check"><input type="checkbox" id="layout-badge-tryme" /> TRY ME</label>
+                    <label class="check"><input type="checkbox" id="layout-badge-metal" /> 金属</label>
+                    <label class="check"><input type="checkbox" id="layout-badge-plastic" /> 塑料</label>
+                    <label class="check"><input type="checkbox" id="layout-badge-glide" /> 滑行</label>
+                    <label class="check"><input type="checkbox" id="layout-badge-light" /> 灯光</label>
+                    <label class="check"><input type="checkbox" id="layout-badge-sound" /> 声光</label>
+                    <label class="check"><input type="checkbox" id="layout-badge-remote" /> 遥控</label>
+                    <label class="check"><input type="checkbox" id="layout-badge-ages6" /> 6+</label>
+                  </span>
+                </label>
                 <label class="check"><input type="checkbox" id="layout-deco" checked /> 底部装饰条纹</label>
+                <label class="check"><input type="checkbox" id="layout-deco-bg" checked /> 正面渐变背景+斜切装饰（跟随模板配色）</label>
                 <label class="full" style="margin-top:6px"><button id="btn-layout-reset" class="mini-btn" title="恢复套版自动布局（拖拽调整后可重置）">↺ 重置区块位置</button></label>
               </div>
             </details>
@@ -256,6 +276,12 @@
                 </select>
               </label>
             </div>
+            <div class="size-row">
+              <label class="check" title="站立展示盒顶部挂孔（半圆挖孔，挂墙展示用）"><input type="checkbox" id="boxwin-handle" /> 顶部提手（挂孔）</label>
+              <label>宽(mm)<input id="boxwin-handle-w" type="number" value="22" min="14" max="80" /></label>
+              <label>高(mm)<input id="boxwin-handle-h" type="number" value="11" min="8" max="30" /></label>
+              <label>位置%<input id="boxwin-handle-x" type="number" value="50" min="0" max="100" /></label>
+            </div>
             <div id="win-draw-canvas-wrap" hidden>
               <svg id="win-draw-canvas" width="100%" height="180" style="background:#fafbfc;border:1px solid #c9d2dc;border-radius:4px;touch-action:none"></svg>
               <div class="size-row" style="margin-top:4px">
@@ -341,6 +367,9 @@
               <label class="check"><input type="checkbox" id="badge-recycle" /> 回收标志</label>
               <label class="check"><input type="checkbox" id="badge-trash" /> 垃圾桶（WEEE）</label>
               <label class="check"><input type="checkbox" id="badge-gc" /> 海湾认证 GC</label>
+              <label class="check"><input type="checkbox" id="badge-ukca" /> 英国 UKCA</label>
+              <label class="check"><input type="checkbox" id="badge-nom" /> 墨西哥 NOM</label>
+              <label class="check"><input type="checkbox" id="badge-paper" /> 纸类回收</label>
             </div>
             </div>
             <p class="hint">自动排入展开图对应面板（天地盖→盖围边、开窗盒→底面、双插盒→背面）；勾选目标市场后自动加 CE / 3C 标志。</p>

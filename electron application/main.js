@@ -498,6 +498,53 @@ function createWindow() {
             const htmlDrag = htmlD;
             app.renderLayout();
             const htmlProc = htmlG + htmlM;
+            // ===== v0.7.0：装饰渐变 / 品牌 logo / 功能徽章 / 认证标志扩展 / 提手 =====
+            // 装饰渐变背景 + 斜切装饰带（farm 模板 bgGrad + slant）
+            app.selectBoxType('tianDiGai');
+            app.state.layout = { template: 'farm', brand: 'FARM', product: '', series: '', sellTitle: '', sellSub: '', gridItems: [], decoOn: true, blocks: {}, logo: '', badges: [], decoBg: true };
+            app.renderLayout();
+            const htmlDeco = (document.querySelector('#preview-area svg') || {}).outerHTML || '';
+            const hasBgGrad = htmlDeco.indexOf('layGrad') >= 0 && htmlDeco.indexOf('url(#layGrad)') >= 0;
+            const hasSlant = htmlDeco.indexOf('opacity="0.85"') >= 0; // 斜切装饰带（v0.7.0 专属属性）
+            // 装饰开关关闭 → 无渐变
+            app.state.layout.decoBg = false;
+            app.renderLayout();
+            const htmlDecoOff = (document.querySelector('#preview-area svg') || {}).outerHTML || '';
+            const decoOffOk = htmlDecoOff.indexOf('layGrad') < 0;
+            app.state.layout.decoBg = true;
+            // 品牌 logo 图片 → 品牌条变 image（bar 区块）
+            app.state.layout.logo = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+            app.renderLayout();
+            const htmlLogo = (document.querySelector('#preview-area svg') || {}).outerHTML || '';
+            const logoBarIsImage = htmlLogo.indexOf('<image') >= 0 && htmlLogo.indexOf('iVBORw0KGgo') >= 0;
+            app.state.layout.logo = '';
+            // 功能徽章：TRY ME + 6+ 勾选 → badge 区块（圆角矩形 + 文字）
+            app.state.layout.badges = [{ id: 'tryme', text: 'TRY ME', icon: 'star' }, { id: 'ages6', text: '6+', icon: null }];
+            app.renderLayout();
+            const htmlBd = (document.querySelector('#preview-area svg') || {}).outerHTML || '';
+            const hasBadges = htmlBd.indexOf('TRY ME') >= 0 && htmlBd.indexOf('rx="') >= 0;
+            app.state.layout.badges = [];
+            // 认证标志扩展：UKCA / NOM / 纸类回收（合规块标志区）
+            app.state.compAuto = true;
+            app.state.markets = new Set(['eu']);
+            app.state.badges = { age0to3: false, recycle: false, trash: false, gc: false, ukca: true, nom: true, paper: true };
+            app.renderLayout();
+            const htmlUk = (document.querySelector('#preview-area svg') || {}).outerHTML || '';
+            const hasUkca = htmlUk.indexOf('UK') >= 0 && htmlUk.indexOf('CA') >= 0 && htmlUk.indexOf('<ellipse') >= 0;
+            const hasNom = htmlUk.indexOf('NOM') >= 0;
+            const hasPaper = htmlUk.indexOf('#009639') >= 0;
+            app.state.compAuto = false;
+            app.state.markets = new Set();
+            app.state.badges = { age0to3: false, recycle: false, trash: false, gc: false };
+            // 提手：开窗盒 handle.on → top 面板半圆挖孔（虚线弧 + 背景色填充）
+            app.selectBoxType('kaiChuangHe');
+            app.state.boxWin = { wPct: 55, hPct: 60, xPct: 22.5, yPct: 8, shape: 'rect', handle: { on: true, w: 24, h: 12, x: 50 } };
+            app.renderLayout();
+            const htmlHd = (document.querySelector('#preview-area svg') || {}).outerHTML || '';
+            const hasHandle = htmlHd.indexOf('stroke-dasharray="5 3"') >= 0 && htmlHd.indexOf('A ') >= 0;
+            app.state.boxWin = { wPct: 55, hPct: 60, xPct: 22.5, yPct: 8, shape: 'rect', handle: { on: false, w: 22, h: 11, x: 50 } };
+            app.selectBoxType('tianDiGai');
+            app.renderLayout();
             return {
               hasBrand: html.indexOf('FARM') >= 0 && html.indexOf('#1c1c1c') >= 0,
               hasSell: html.indexOf('Push!') >= 0 && html.indexOf('To power and go') >= 0,
@@ -528,6 +575,8 @@ function createWindow() {
               hasWinHandleNoLayout: htmlN.indexOf('win-handle') >= 0 && htmlN.indexOf('win-body') >= 0,
               hasCustomPath: htmlN.indexOf('fill-rule="evenodd"') >= 0 && htmlN.indexOf('<path') >= 0,
               svgLen: html.length,
+              // v0.7.0
+              hasBgGrad, hasSlant, decoOffOk, logoBarIsImage, hasBadges, hasUkca, hasNom, hasPaper, hasHandle,
             };
           } catch (e) { return 'ERR: ' + e.message; }
         })();
@@ -1635,6 +1684,16 @@ function createWindow() {
       sa('apiTest.skipWhenNoKey', dom.apiTest && dom.apiTest.skipShown === true);
       sa('apiTest.failPath', dom.apiTest && dom.apiTest.failOk === true);
       sa('layoutTpl.render', dom.layoutTpl && dom.layoutTpl.hasBrand === true && dom.layoutTpl.hasSell === true && dom.layoutTpl.hasSeries === true && dom.layoutTpl.hasGrid === true && dom.layoutTpl.hasDeco === true && dom.layoutTpl.hasGuochao === true && dom.layoutTpl.hasGloss === true && dom.layoutTpl.hasMetal === true && dom.layoutTpl.hasHandles === true && dom.layoutTpl.hasOverride === true && dom.layoutTpl.hasBadgeAge === true && dom.layoutTpl.hasBadgeRecycle === true && dom.layoutTpl.hasBadgeGc === true && dom.layoutTpl.hasOrigin === true && dom.layoutTpl.hasMultiWarn === true && dom.layoutTpl.hasWinEllipse === true && dom.layoutTpl.hasWinHandles === true && dom.layoutTpl.hasWinCircle === true && dom.layoutTpl.hasBrushAutoOpen === true && dom.layoutTpl.hasBrushClear === true && dom.layoutTpl.hasBrushAutoHide === true && dom.layoutTpl.hasRatioLock === true && dom.layoutTpl.hasKeepCustom === true && dom.layoutTpl.hasBlocksCleared === true && dom.layoutTpl.hasDrawOk === true && dom.layoutTpl.hasWinHandleNoLayout === true && dom.layoutTpl.hasCustomPath === true);
+      // v0.7.0：装饰渐变/斜切、品牌 logo、功能徽章、认证标志扩展、提手
+      sa('layoutTpl.hasBgGrad', dom.layoutTpl && dom.layoutTpl.hasBgGrad === true);
+      sa('layoutTpl.hasSlant', dom.layoutTpl && dom.layoutTpl.hasSlant === true);
+      sa('layoutTpl.decoOffOk', dom.layoutTpl && dom.layoutTpl.decoOffOk === true);
+      sa('layoutTpl.logoBarIsImage', dom.layoutTpl && dom.layoutTpl.logoBarIsImage === true);
+      sa('layoutTpl.hasBadges', dom.layoutTpl && dom.layoutTpl.hasBadges === true);
+      sa('layoutTpl.hasUkca', dom.layoutTpl && dom.layoutTpl.hasUkca === true);
+      sa('layoutTpl.hasNom', dom.layoutTpl && dom.layoutTpl.hasNom === true);
+      sa('layoutTpl.hasPaper', dom.layoutTpl && dom.layoutTpl.hasPaper === true);
+      sa('layoutTpl.hasHandle', dom.layoutTpl && dom.layoutTpl.hasHandle === true);
       // 主进程侧：水印请求参数构造（lib/imgRequest.js 三态；buildImageRequest 已由顶部 require）
       {
         const wmBase = { model: 'm', prompt: 'p', size: '1K' };
@@ -1807,12 +1866,61 @@ function readSchemes() {
   }
 }
 /** 方案字段白名单：防渲染端传入 id/ts 覆盖主进程值、防任意字段膨胀 manifest */
-const SCHEME_FIELDS = ['kind', 'prompt', 'model', 'size', 'seed', 'boxType', 'boxSize', 'images', 'compAuto', 'compFields', 'markets', 'barcode', 'bleed'];
+const SCHEME_FIELDS = ['kind', 'prompt', 'model', 'size', 'seed', 'boxType', 'boxSize', 'images', 'compAuto', 'compFields', 'markets', 'barcode', 'bleed', 'layout', 'badges'];
 const COMP_FIELD_KEYS = ['name', 'sku', 'material', 'standard', 'maker', 'warning'];
 const clampNum = (v, lo, hi) => {
   const n = Number(v);
   return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : lo;
 };
+// v0.7.0：版面套版清洗（layout 白名单；logo dataURL 限长防 manifest 膨胀；blocks 数值 clamp；gridItems 限长）
+const LAYOUT_KEYS = ['template', 'brand', 'product', 'series', 'sellTitle', 'sellSub', 'gridItems', 'decoOn', 'blocks', 'logo', 'badges', 'decoBg'];
+const LOGO_MAX_CHARS = 500 * 1024;
+function cleanLayout(s) {
+  if (!s || typeof s !== 'object') return {};
+  const out = {};
+  for (const k of LAYOUT_KEYS) {
+    const v = s[k];
+    if (k === 'gridItems') {
+      out.gridItems = Array.isArray(v) ? v.slice(0, 12).map((g) => ({
+        no: (g && typeof g.no === 'string') ? g.no.slice(0, 16) : '',
+        name: (g && typeof g.name === 'string') ? g.name.slice(0, 60) : '',
+      })) : [];
+    } else if (k === 'blocks') {
+      out.blocks = (v && typeof v === 'object') ? Object.fromEntries(Object.entries(v).slice(0, 24).map(([id, b]) => [id.slice(0, 16), {
+        x: clampNum(b && b.x, 0, 2000), y: clampNum(b && b.y, 0, 2000),
+        w: clampNum(b && b.w, 2, 2000), h: clampNum(b && b.h, 2, 2000),
+      }])) : {};
+    } else if (k === 'logo') {
+      out.logo = (typeof v === 'string' && v.length <= LOGO_MAX_CHARS && /^data:image\/(png|jpe?g|webp|svg\+xml);base64,/.test(v)) ? v : '';
+    } else if (k === 'badges') {
+      out.badges = Array.isArray(v) ? v.slice(0, 12).map((b) => ({
+        id: (b && typeof b.id === 'string') ? b.id.slice(0, 16) : '',
+        text: (b && typeof b.text === 'string') ? b.text.slice(0, 24) : '',
+        icon: (b && typeof b.icon === 'string') ? b.icon.slice(0, 16) : null,
+      })).filter((b) => b.id) : [];
+    } else if (typeof v === 'string') {
+      out[k] = v.slice(0, 2000);
+    } else if (k === 'decoOn' || k === 'decoBg') {
+      out[k] = v !== false;
+    } else if (typeof v === 'number') {
+      out[k] = clampNum(v, 0, 10000);
+    }
+  }
+  return out;
+}
+// v0.7.0：开窗窗口配置清洗（boxSize.win：百分比/形状/提手）
+function cleanWin(w) {
+  if (!w || typeof w !== 'object') return null;
+  const n = (v, lo, hi, d) => { const x = Number(v); return Number.isFinite(x) ? Math.min(hi, Math.max(lo, x)) : d; };
+  return {
+    wPct: n(w.wPct, 5, 95, 55), hPct: n(w.hPct, 5, 95, 60),
+    xPct: n(w.xPct, 0, 90, 22.5), yPct: n(w.yPct, 0, 90, 8),
+    shape: ['rect', 'round', 'ellipse', 'circle', 'custom'].includes(w.shape) ? w.shape : 'rect',
+    handle: (w.handle && typeof w.handle === 'object')
+      ? { on: !!w.handle.on, w: n(w.handle.w, 14, 80, 22), h: n(w.handle.h, 8, 30, 11), x: n(w.handle.x, 0, 100, 50) }
+      : { on: false, w: 22, h: 11, x: 50 },
+  };
+}
 /** 条码自定义参数清洗：仅接受有限数值，其余为 null（= 自动） */
 const numOrNull = (v) => (typeof v === 'number' && Number.isFinite(v)) ? v : null;
 /** 合规排版信息清洗（存/导入共用，防任意结构写入 manifest） */
@@ -1848,7 +1956,14 @@ ipcMain.handle('scheme:save', (_e, s) => {
         w: clampNum(src.boxSize.w, 1, 500),
         d: clampNum(src.boxSize.d, 1, 500),
         h: clampNum(src.boxSize.h, 1, 500),
+        win: cleanWin(src.boxSize.win), // v0.7.0：开窗窗口配置随方案存档（此前丢失）
       };
+    } else if (k === 'layout') {
+      rec.layout = cleanLayout(src.layout); // v0.7.0：版面套版随方案存档（此前丢失）
+    } else if (k === 'badges') {
+      rec.badges = (src.badges && typeof src.badges === 'object')
+        ? Object.fromEntries(Object.entries(src.badges).slice(0, 12).map(([bk, bv]) => [bk.slice(0, 16), !!bv]))
+        : {};
     } else if (k === 'barcode') {
       // 条码对象持久化（曾缺失此分支导致条码从未存进方案）：格式/编码 + 自定义大小/位置参数
       rec.barcode = (src.barcode && typeof src.barcode === 'object' && typeof src.barcode.format === 'string' && typeof src.barcode.value === 'string')
@@ -1885,7 +2000,13 @@ ipcMain.handle('scheme:update', (_e, id, s) => {
   for (const k of SCHEME_FIELDS) {
     if (k === 'images') continue; // 图片快照不可更新
     if (k === 'boxSize' && src.boxSize && typeof src.boxSize === 'object') {
-      rec.boxSize = { w: clampNum(src.boxSize.w, 1, 500), d: clampNum(src.boxSize.d, 1, 500), h: clampNum(src.boxSize.h, 1, 500) };
+      rec.boxSize = { w: clampNum(src.boxSize.w, 1, 500), d: clampNum(src.boxSize.d, 1, 500), h: clampNum(src.boxSize.h, 1, 500), win: cleanWin(src.boxSize.win) };
+    } else if (k === 'layout') {
+      rec.layout = cleanLayout(src.layout); // v0.7.0
+    } else if (k === 'badges') {
+      rec.badges = (src.badges && typeof src.badges === 'object')
+        ? Object.fromEntries(Object.entries(src.badges).slice(0, 12).map(([bk, bv]) => [bk.slice(0, 16), !!bv]))
+        : {};
     } else if (k === 'compAuto') {
       rec.compAuto = !!src.compAuto;
     } else if (k === 'compFields' && src.compFields && typeof src.compFields === 'object') {
@@ -2026,8 +2147,14 @@ ipcMain.handle('scheme:import', async (_e, forcePath) => {
     size: s.size || '',
     seed: s.seed || '',
     boxType: s.boxType || '',
-    boxSize: s.boxSize || null,
+    boxSize: (s.boxSize && typeof s.boxSize === 'object')
+      ? { w: clampNum(s.boxSize.w, 1, 500), d: clampNum(s.boxSize.d, 1, 500), h: clampNum(s.boxSize.h, 1, 500), win: cleanWin(s.boxSize.win) }
+      : null,
     images,
+    layout: cleanLayout(s.layout), // v0.7.0：版面套版随方案导入（清洗防恶意结构）
+    badges: (s.badges && typeof s.badges === 'object')
+      ? Object.fromEntries(Object.entries(s.badges).slice(0, 12).map(([bk, bv]) => [bk.slice(0, 16), !!bv]))
+      : {},
     ...cleanCompInfo(s), // 合规排版信息随方案导入（兼容旧方案：缺省为关闭态）
   };
   list.unshift(rec);

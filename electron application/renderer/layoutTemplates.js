@@ -5,7 +5,7 @@
  * 区块类型：bar（品牌条）/ box（产品名/系列标签）/ sell（卖点区）/ grid（系列网格，可自动配图）/ strip（装饰条）
  * 模板布局参数：gridPos（网格位置 right|bottom）、gridCols（列数）、sellH（卖点区高度）、back（背板面板配置）*/
 
-// 套版模板定义（配色 + 布局参数）
+// 套版模板定义（配色 + 布局参数 + v0.7.0 装饰：bgGrad 正面渐变背景 / slant 斜切装饰带）
 const LAYOUT_TEMPLATES = {
   farm: { // 农场经典（仿实物：黑底黄字品牌条 + 绿底卖点区 + 三色装饰条）
     label: '农场经典',
@@ -14,6 +14,8 @@ const LAYOUT_TEMPLATES = {
     sellBlock: { bg: '#2e7d32', title: '#ffd400', sub: '#ffffff' },
     productName: { bg: '#ffffff', text: '#1c1c1c' },
     decoStrip: ['#2e7d32', '#4a4a4a', '#111111'],
+    bgGrad: { from: '#f3f7d8', to: '#dcec9a', angle: 160 }, // 浅绿渐变（v0.7.0）
+    slant: ['#2e7d32', '#ffd400'], // 斜切装饰带颜色（顶部品牌条下沿，v0.7.0）
     gridPos: 'right', gridCols: 1, sellH: 20,
     back: { panel: 'back', brand: true, grid: true, deco: true },
   },
@@ -24,6 +26,8 @@ const LAYOUT_TEMPLATES = {
     sellBlock: { bg: '#1c1c1c', title: '#ffffff', sub: '#cccccc' },
     productName: { bg: '#ffffff', text: '#1c1c1c' },
     decoStrip: ['#1c1c1c', '#888888', '#eeeeee'],
+    bgGrad: { from: '#ffffff', to: '#eceff4', angle: 160 },
+    slant: ['#1c1c1c'],
     gridPos: 'bottom', gridCols: 2, sellH: 18,
     back: null,
   },
@@ -34,6 +38,8 @@ const LAYOUT_TEMPLATES = {
     sellBlock: { bg: '#8c1418', title: '#ffd700', sub: '#ffe9c9' },
     productName: { bg: '#fff8ec', text: '#8c1418' },
     decoStrip: ['#b01f24', '#ffd700', '#5c0d10'],
+    bgGrad: { from: '#fff3e2', to: '#f6d7a8', angle: 160 },
+    slant: ['#b01f24', '#ffd700'],
     gridPos: 'right', gridCols: 1, sellH: 20,
     back: { panel: 'back', brand: true, grid: true, deco: true },
   },
@@ -44,6 +50,8 @@ const LAYOUT_TEMPLATES = {
     sellBlock: { bg: '#1a1a2e', title: '#00d4ff', sub: '#9fb4c8' },
     productName: { bg: '#ffffff', text: '#12121c' },
     decoStrip: ['#00d4ff', '#3a3a5c', '#12121c'],
+    bgGrad: { from: '#1a1a2e', to: '#0d0d18', angle: 150 }, // 机甲黑蓝渐变（接近 MZCARS 黑红风格，可换红）
+    slant: ['#00d4ff', '#3a3a5c'],
     gridPos: 'bottom', gridCols: 2, sellH: 18,
     back: null,
   },
@@ -54,6 +62,8 @@ const LAYOUT_TEMPLATES = {
     sellBlock: { bg: '#f4f9fb', title: '#2a6f97', sub: '#5c8a9e' },
     productName: { bg: '#ffffff', text: '#2a6f97' },
     decoStrip: ['#ff8fab', '#a8d8ea', '#2a6f97'],
+    bgGrad: { from: '#fdf4f7', to: '#e6f4fa', angle: 150 },
+    slant: ['#ff8fab', '#a8d8ea'],
     gridPos: 'bottom', gridCols: 2, sellH: 18,
     back: null,
   },
@@ -64,6 +74,8 @@ const LAYOUT_TEMPLATES = {
     sellBlock: { bg: '#3a6b35', title: '#ffd97a', sub: '#e8f5e9' },
     productName: { bg: '#fdfaf3', text: '#2d5a27' },
     decoStrip: ['#2d5a27', '#c8a27a', '#1c3a18'],
+    bgGrad: { from: '#eef7ec', to: '#cde4c6', angle: 160 },
+    slant: ['#2d5a27', '#c8a27a'],
     gridPos: 'right', gridCols: 1, sellH: 20,
     back: { panel: 'back', brand: true, grid: true, deco: true },
   },
@@ -74,6 +86,8 @@ const LAYOUT_TEMPLATES = {
     sellBlock: { bg: '#fdf2f8', title: '#db2777', sub: '#9d5c7a' },
     productName: { bg: '#ffffff', text: '#db2777' },
     decoStrip: ['#f472b6', '#fbcfe8', '#db2777'],
+    bgGrad: { from: '#fdf2f8', to: '#fbd7e8', angle: 150 },
+    slant: ['#f472b6', '#db2777'],
     gridPos: 'bottom', gridCols: 2, sellH: 18,
     back: { panel: 'back', brand: true, grid: true, deco: true },
   },
@@ -84,6 +98,8 @@ const LAYOUT_TEMPLATES = {
     sellBlock: { bg: '#2e1065', title: '#c4b5fd', sub: '#a5b4fc' },
     productName: { bg: '#ffffff', text: '#312e81' },
     decoStrip: ['#7c3aed', '#1e1b4b', '#312e81'],
+    bgGrad: { from: '#2e1065', to: '#1e1b4b', angle: 150 },
+    slant: ['#7c3aed', '#c4b5fd'],
     gridPos: 'bottom', gridCols: 3, sellH: 18,
     back: { panel: 'back', brand: true, grid: true, deco: true },
   },
@@ -94,6 +110,8 @@ const LAYOUT_TEMPLATES = {
     sellBlock: { bg: '#b91c1c', title: '#ffffff', sub: '#fecaca' },
     productName: { bg: '#ffffff', text: '#1e40af' },
     decoStrip: ['#dc2626', '#1d4ed8', '#f59e0b'],
+    bgGrad: { from: '#f4f6ff', to: '#dbe3ff', angle: 160 },
+    slant: ['#dc2626', '#1d4ed8'],
     gridPos: 'right', gridCols: 1, sellH: 20,
     back: { panel: 'back', brand: true, grid: true, deco: true },
   },
@@ -121,11 +139,12 @@ function layoutSections(layout, front, images, mode) {
   const decoH = layout.decoOn && tpl.decoStrip && tpl.decoStrip.length ? 3.5 : 0;
   const imgs = Array.isArray(images) ? images : [];
 
-  // 顶部品牌条
-  if (layout.brand) {
+  // 顶部品牌条（v0.7.0：支持 logo 图片，有图优先于文字）
+  if (layout.brand || layout.logo) {
     s.push({
       type: 'bar', id: 'bar', draggable: !isBack, x: 0, y: 0, w: W, h: isBack ? Math.min(9, tpl.brandBar.hMm) : tpl.brandBar.hMm,
-      bg: tpl.brandBar.bg, text: layout.brand, color: tpl.brandBar.text,
+      bg: tpl.brandBar.bg, text: layout.logo ? '' : (layout.brand || ''), color: tpl.brandBar.text,
+      image: layout.logo || null, // v0.7.0：品牌 logo 图片（dataURL）
       fontSize: Math.min(9, (isBack ? 9 : tpl.brandBar.hMm) * 0.55), bold: true,
     });
   }
@@ -159,6 +178,21 @@ function layoutSections(layout, front, images, mode) {
         titleSize: 8, subSize: 4.5,
       });
     }
+  }
+
+  // 功能徽章（v0.7.0）：layout.badges = [{ text, icon, bg }]，排在品牌条下方一行
+  if (!isBack && Array.isArray(layout.badges) && layout.badges.length) {
+    const bw = 34; // 单个徽章宽（mm）
+    const bh = 9;
+    const by = (layout.brand || layout.logo ? tpl.brandBar.hMm : 0) + 2;
+    layout.badges.forEach((bd, i) => {
+      const bx = margin + i * (bw + 2.5);
+      s.push({
+        type: 'badge', id: 'badge' + i, draggable: true, x: bx, y: by, w: bw, h: bh,
+        bg: bd.bg || tpl.seriesTag.bg, text: bd.text || '', icon: bd.icon || null,
+        color: tpl.seriesTag.text,
+      });
+    });
   }
 
   // 系列网格（位置：right 右侧竖排 / bottom 卖点区上方横排；背板=主区块）
@@ -213,7 +247,14 @@ function drawLayoutSections(parts, sections, px, off, proc) {
     const x = px(sec.x) + off, y = px(sec.y) + off, w = px(sec.w), h = px(sec.h);
     if (sec.type === 'bar') {
       parts.push(`<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${sec.bg}"/>`);
-      parts.push(`<text x="${x + w / 2}" y="${y + h / 2 + px(sec.fontSize) * 0.36}" text-anchor="middle" font-size="${px(sec.fontSize)}" font-weight="${sec.bold ? 'bold' : 'normal'}" fill="${textFill(sec.color)}">${escXml(sec.text)}</text>`);
+      if (sec.image) {
+        // v0.7.0：品牌 logo 图片（contain 居中，左右各留 2mm；高度约占条高 80%）
+        const iw = Math.min(w - 4, (h * 0.8) * 3); // 上限宽高比 3:1，防超宽图压扁
+        const ih = h * 0.8;
+        parts.push(`<image x="${x + (w - iw) / 2}" y="${y + (h - ih) / 2}" width="${iw}" height="${ih}" preserveAspectRatio="xMidYMid meet" href="${sec.image}"/>`);
+      } else if (sec.text) {
+        parts.push(`<text x="${x + w / 2}" y="${y + h / 2 + px(sec.fontSize) * 0.36}" text-anchor="middle" font-size="${px(sec.fontSize)}" font-weight="${sec.bold ? 'bold' : 'normal'}" fill="${textFill(sec.color)}">${escXml(sec.text)}</text>`);
+      }
     } else if (sec.type === 'box') {
       parts.push(`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="1.5" fill="${sec.bg}" stroke="${sec.stroke || 'none'}" stroke-width="0.6"/>`);
       parts.push(`<text x="${x + w / 2}" y="${y + h / 2 + px(sec.fontSize) * 0.36}" text-anchor="middle" font-size="${px(sec.fontSize)}" font-weight="${sec.bold ? 'bold' : 'normal'}" fill="${textFill(sec.color)}">${escXml(sec.text)}</text>`);
@@ -247,6 +288,35 @@ function drawLayoutSections(parts, sections, px, off, proc) {
       });
     } else if (sec.type === 'strip') {
       parts.push(`<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${sec.bg}"/>`);
+    } else if (sec.type === 'badge') {
+      // v0.7.0 功能徽章：圆角矩形 + 可选图标（小圆点/星形等预设）+ 文字
+      parts.push(`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${h * 0.45}" fill="${sec.bg}" stroke="#ffffff" stroke-width="0.5"/>`);
+      let tx = x + w / 2;
+      if (sec.icon) {
+        const cr = h * 0.26;
+        const cx0 = x + h * 0.62;
+        const cy0 = y + h / 2;
+        if (sec.icon === 'star') {
+          parts.push(`<path d="M ${cx0} ${cy0 - cr} L ${cx0 + cr * 0.4} ${cy0 - cr * 0.3} L ${cx0 + cr} ${cy0 - cr * 0.3} L ${cx0 + cr * 0.5} ${cy0 + cr * 0.1} L ${cx0 + cr * 0.65} ${cy0 + cr * 0.75} L ${cx0} ${cy0 + cr * 0.4} L ${cx0 - cr * 0.65} ${cy0 + cr * 0.75} L ${cx0 - cr * 0.5} ${cy0 + cr * 0.1} L ${cx0 - cr} ${cy0 - cr * 0.3} L ${cx0 - cr * 0.4} ${cy0 - cr * 0.3} Z" fill="#ffffff"/>`);
+        } else if (sec.icon === 'bolt') {
+          parts.push(`<path d="M ${cx0 - cr * 0.5} ${cy0 - cr * 1.1} L ${cx0 + cr * 0.55} ${cy0 - cr * 1.1} L ${cx0 + cr * 0.15} ${cy0 - cr * 0.15} L ${cx0 + cr * 0.7} ${cy0 - cr * 0.15} L ${cx0 - cr * 0.5} ${cy0 + cr * 1.1} L ${cx0 - cr * 0.12} ${cy0 + cr * 0.05} L ${cx0 - cr * 0.65} ${cy0 + cr * 0.05} Z" fill="#ffffff"/>`);
+        } else if (sec.icon === 'sound') {
+          parts.push(`<path d="M ${cx0 - cr * 0.9} ${cy0 - cr * 0.5} L ${cx0 - cr * 0.4} ${cy0 - cr * 0.5} L ${cx0 + cr * 0.35} ${cy0 - cr} L ${cx0 + cr * 0.35} ${cy0 + cr} L ${cx0 - cr * 0.4} ${cy0 + cr * 0.5} L ${cx0 - cr * 0.9} ${cy0 + cr * 0.5} Z" fill="#ffffff"/>`);
+        } else if (sec.icon === 'wheel') {
+          parts.push(`<circle cx="${cx0}" cy="${cy0}" r="${cr * 0.85}" fill="none" stroke="#ffffff" stroke-width="${h * 0.12}"/>`);
+          parts.push(`<circle cx="${cx0}" cy="${cy0}" r="${cr * 0.28}" fill="#ffffff"/>`);
+        } else if (sec.icon === 'car') {
+          parts.push(`<path d="M ${cx0 - cr} ${cy0 + cr * 0.3} L ${cx0 - cr * 0.7} ${cy0 - cr * 0.2} L ${cx0 + cr * 0.2} ${cy0 - cr * 0.2} L ${cx0 + cr * 0.7} ${cy0 + cr * 0.1} L ${cx0 + cr * 0.9} ${cy0 + cr * 0.3} L ${cx0 - cr} ${cy0 + cr * 0.3} Z" fill="#ffffff"/>`);
+          parts.push(`<circle cx="${cx0 - cr * 0.55}" cy="${cy0 + cr * 0.38}" r="${cr * 0.22}" fill="#ffffff"/>`);
+          parts.push(`<circle cx="${cx0 + cr * 0.55}" cy="${cy0 + cr * 0.38}" r="${cr * 0.22}" fill="#ffffff"/>`);
+        } else {
+          parts.push(`<circle cx="${cx0}" cy="${cy0}" r="${cr * 0.6}" fill="#ffffff"/>`);
+        }
+        tx = x + h * 1.35 + (w - h * 1.35) / 2;
+      }
+      if (sec.text) {
+        parts.push(`<text x="${tx}" y="${y + h / 2 + px(sec.fontSize || 4.5) * 0.36}" text-anchor="middle" font-size="${px(sec.fontSize || 4.5)}" font-weight="bold" fill="${sec.color}">${escXml(sec.text)}</text>`);
+      }
     }
   }
 }

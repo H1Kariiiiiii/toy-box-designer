@@ -237,6 +237,10 @@ label.check input { width: auto; margin: 0; }
 .mini-btn:hover { border-color: var(--accent-2); }
 .mini-btn.danger { border-color: #c0392b; color: #e74c3c; }
 .mini-btn.danger:hover { background: rgba(231, 76, 60, 0.12); border-color: #e74c3c; }
+/* v0.7.0：功能徽章选择 + 品牌 logo 预览 */
+.badge-pick { display: flex; flex-wrap: wrap; gap: 4px 10px; }
+.badge-pick label.check { font-size: 12px; }
+.logo-preview { height: 26px; max-width: 120px; border: 1px solid var(--border); border-radius: 4px; background: #fff; padding: 2px; object-fit: contain; }
 .cache-bar { display: flex; align-items: center; gap: 8px; margin: 6px 0; flex-wrap: wrap; }
 .cache-bar .hint { margin: 0; flex: 1 1 auto; }
 .panel-sep { border: none; border-top: 1px solid var(--border); margin: 14px 0 10px; }

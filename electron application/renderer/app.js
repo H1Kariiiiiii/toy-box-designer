@@ -19,10 +19,10 @@ const state = {
   compDone: new Set(),// 已勾选的合规项
   compAuto: false,    // 自动排版合规信息到展开图
   compFields: { name: '', sku: '', material: '', standard: 'GB 6675', maker: '', warning: '', origin: '' },
-  layout: { template: 'farm', brand: '', product: '', series: '', sellTitle: '', sellSub: '', gridItems: [], decoOn: true, blocks: {} }, // 版面套版（中改）；blocks=拖拽位置覆盖（大改）
+  layout: { template: 'farm', brand: '', product: '', series: '', sellTitle: '', sellSub: '', gridItems: [], decoOn: true, blocks: {}, logo: '', badges: [], decoBg: true }, // 版面套版（中改）；blocks=拖拽位置覆盖（大改）；v0.7.0：logo=品牌图/badges=功能徽章/decoBg=装饰渐变开关
   process: 'none', // 工艺预览：none|matte|gloss|uv|gold|silver（仅预览模拟，不入导出/存档）
-  boxWin: { wPct: 55, hPct: 60, xPct: 22.5, yPct: 8, shape: 'rect' }, // 开窗窗口（% 占正面面板；shape: rect|round|ellipse|circle）
-  badges: { age0to3: false, recycle: false, trash: false, gc: false }, // 底部标志（合规块右侧；CE/CCC 按市场自动）
+  boxWin: { wPct: 55, hPct: 60, xPct: 22.5, yPct: 8, shape: 'rect', handle: { on: false, w: 22, h: 11, x: 50 } }, // 开窗窗口（% 占正面面板；shape: rect|round|ellipse|circle）；v0.7.0 handle=顶部提手
+  badges: { age0to3: false, recycle: false, trash: false, gc: false, ukca: false, nom: false, paper: false }, // 底部标志（合规块右侧；CE/CCC 按市场自动；v0.7.0 增 UKCA/NOM/纸类回收）
   winDrawMode: false, // 窗口画板绘制模式（画板拖框定窗口）
   batchMode: false,   // 当前结果区是否处于批量方案模式
   schemes: [],        // 当前批量方案 [{ seed, images }]
@@ -318,7 +318,23 @@ async function init() {  const cfg = await window.api.getConfig();
       renderLayout();
     });
   });
-  ['badge-age0to3', 'badge-recycle', 'badge-trash', 'badge-gc'].forEach((bid) => {
+  // v0.7.0：顶部提手（仅开窗盒）
+  const handleOnEl = $('boxwin-handle');
+  if (handleOnEl) handleOnEl.addEventListener('change', () => {
+    state.boxWin.handle = Object.assign({}, state.boxWin.handle || {}, { on: handleOnEl.checked });
+    renderLayout();
+  });
+  ['boxwin-handle-w', 'boxwin-handle-h', 'boxwin-handle-x'].forEach((wid) => {
+    const wel = $(wid);
+    if (wel) wel.addEventListener('input', () => {
+      const num = (v) => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
+      state.boxWin.handle = Object.assign({}, state.boxWin.handle || {}, {
+        w: num($('boxwin-handle-w').value), h: num($('boxwin-handle-h').value), x: num($('boxwin-handle-x').value),
+      });
+      renderLayout();
+    });
+  });
+  ['badge-age0to3', 'badge-recycle', 'badge-trash', 'badge-gc', 'badge-ukca', 'badge-nom', 'badge-paper'].forEach((bid) => {
     const bel = $(bid);
     if (bel) bel.addEventListener('change', () => { state.badges[bid.replace('badge-', '')] = bel.checked; renderLayout(); });
   });
@@ -337,6 +353,67 @@ async function init() {  const cfg = await window.api.getConfig();
   if (processEl) processEl.addEventListener('change', () => { state.process = processEl.value; renderLayout(); });
   const layoutDecoEl = $('layout-deco');
   if (layoutDecoEl) layoutDecoEl.addEventListener('change', () => { state.layout.decoOn = layoutDecoEl.checked; renderLayout(); });
+  // v0.7.0：装饰渐变开关（模板 bgGrad 背景）
+  const layoutDecoBgEl = $('layout-deco-bg');
+  if (layoutDecoBgEl) layoutDecoBgEl.addEventListener('change', () => { state.layout.decoBg = layoutDecoBgEl.checked; renderLayout(); });
+  // v0.7.0：品牌 logo 上传（压缩为 dataURL，上限 512px 宽）
+  const logoInput = $('layout-logo');
+  if (logoInput) logoInput.addEventListener('change', () => {
+    const f = logoInput.files && logoInput.files[0];
+    if (!f) return;
+    if (!/^image\/(png|jpe?g|webp|svg\+xml)$/.test(f.type)) {
+      $('gen-status').textContent = '❌ logo 仅支持 PNG/JPEG/WebP/SVG';
+      $('gen-status').className = 'status err';
+      return;
+    }
+    const rd = new FileReader();
+    rd.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const maxW = 512;
+        const scale = Math.min(1, maxW / img.width);
+        const c = document.createElement('canvas');
+        c.width = Math.max(1, Math.round(img.width * scale));
+        c.height = Math.max(1, Math.round(img.height * scale));
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        state.layout.logo = c.toDataURL('image/png');
+        const lg = $('layout-logo-preview');
+        if (lg) { lg.src = state.layout.logo; lg.style.display = 'inline-block'; }
+        $('gen-status').textContent = '✅ 品牌 logo 已载入（透明底建议 PNG）';
+        $('gen-status').className = 'status ok';
+        renderLayout();
+      };
+      img.onerror = () => { $('gen-status').textContent = '❌ logo 图片读取失败'; $('gen-status').className = 'status err'; };
+      img.src = rd.result;
+    };
+    rd.readAsDataURL(f);
+    logoInput.value = '';
+  });
+  const logoClearEl = $('layout-logo-clear');
+  if (logoClearEl) logoClearEl.addEventListener('click', () => {
+    state.layout.logo = '';
+    const lg = $('layout-logo-preview');
+    if (lg) { lg.src = ''; lg.style.display = 'none'; }
+    renderLayout();
+  });
+  // v0.7.0：功能徽章勾选（tryme/metal/plastic/glide/light/sound/remote/ages6）
+  const BADGE_DEFS = [
+    ['tryme', 'TRY ME', 'star'], ['metal', '金属', 'wheel'], ['plastic', '塑料', 'car'],
+    ['glide', '滑行', 'wheel'], ['light', '灯光', 'bolt'], ['sound', '声光', 'sound'],
+    ['remote', '遥控', 'bolt'], ['ages6', '6+', null],
+  ];
+  window.__BADGE_DEFS = BADGE_DEFS;
+  const syncBadges = () => {
+    state.layout.badges = BADGE_DEFS.filter((bd) => {
+      const el = $('layout-badge-' + bd[0]);
+      return el && el.checked;
+    }).map((bd) => ({ id: bd[0], text: bd[1], icon: bd[2] }));
+    renderLayout();
+  };
+  BADGE_DEFS.forEach((bd) => {
+    const el = $('layout-badge-' + bd[0]);
+    if (el) el.addEventListener('change', syncBadges);
+  });
   renderQuickThemes();
   // 3D mockup 懒初始化：进入「预览」页签时才创建 renderer（隐藏元素内创建会得到 0 尺寸 canvas）
 }
@@ -925,11 +1002,17 @@ async function loadScheme(rec) {
         $('size-d').value = rec.boxSize.d;
         $('size-h').value = rec.boxSize.h;
         if (rec.boxSize.win) {
-          state.boxWin = { wPct: 55, hPct: 60, xPct: 22.5, yPct: 8, shape: 'rect', ...rec.boxSize.win };
+          state.boxWin = { wPct: 55, hPct: 60, xPct: 22.5, yPct: 8, shape: 'rect', handle: { on: false, w: 22, h: 11, x: 50 }, ...rec.boxSize.win };
           const sw = (id, v) => { const el = $(id); if (el) el.value = v; };
           sw('boxwin-w', state.boxWin.wPct); sw('boxwin-h', state.boxWin.hPct);
           sw('boxwin-x', state.boxWin.xPct); sw('boxwin-y', state.boxWin.yPct);
           const sh = $('boxwin-shape'); if (sh) sh.value = state.boxWin.shape || 'rect';
+          // v0.7.0：提手参数回填
+          const hh = state.boxWin.handle || {};
+          const hOn = $('boxwin-handle'); if (hOn) hOn.checked = !!hh.on;
+          const hW = $('boxwin-handle-w'); if (hW) hW.value = hh.w != null ? hh.w : 22;
+          const hH = $('boxwin-handle-h'); if (hH) hH.value = hh.h != null ? hh.h : 11;
+          const hX = $('boxwin-handle-x'); if (hX) hX.value = hh.x != null ? hh.x : 50;
         }
       }
     }
@@ -978,6 +1061,10 @@ async function loadScheme(rec) {
         sellTitle: l.sellTitle || '', sellSub: l.sellSub || '',
         gridItems: Array.isArray(l.gridItems) ? l.gridItems : [],
         decoOn: l.decoOn !== false,
+        blocks: (l.blocks && typeof l.blocks === 'object') ? l.blocks : {}, // 拖拽位置随方案恢复（v0.7.0 补漏）
+        logo: l.logo || '', // v0.7.0：品牌 logo 图片（dataURL）
+        badges: Array.isArray(l.badges) ? l.badges : [], // v0.7.0：功能徽章
+        decoBg: l.decoBg !== false, // v0.7.0：装饰渐变开关
       };
       const setV = (id, v) => { const el = $(id); if (el) el.value = v; };
       setV('layout-template', state.layout.template);
@@ -989,12 +1076,23 @@ async function loadScheme(rec) {
       setV('layout-grid', state.layout.gridItems.map((g) => (g.no || '') + ',' + (g.name || '')).join('\n'));
       const ld = $('layout-deco');
       if (ld) ld.checked = state.layout.decoOn;
+      const lg = $('layout-logo-preview');
+      if (lg) { lg.src = state.layout.logo || ''; lg.style.display = state.layout.logo ? 'inline-block' : 'none'; }
+      const lb = $('layout-deco-bg');
+      if (lb) lb.checked = state.layout.decoBg;
+      // 功能徽章勾选恢复（layout-badge-* 复选框）
+      const badgeSel = ['tryme', 'metal', 'plastic', 'glide', 'light', 'sound', 'remote', 'ages6'];
+      badgeSel.forEach((k) => {
+        const el = $('layout-badge-' + k);
+        if (el) el.checked = state.layout.badges.some((b) => b.id === k);
+      });
     }
     if (rec.badges && typeof rec.badges === 'object') {
-      state.badges = { age0to3: false, recycle: false, trash: false, gc: false, ...rec.badges };
+      state.badges = { age0to3: false, recycle: false, trash: false, gc: false, ukca: false, nom: false, paper: false, ...rec.badges };
       const setB = (id, k) => { const el = $(id); if (el) el.checked = !!state.badges[k]; };
       setB('badge-age0to3', 'age0to3'); setB('badge-recycle', 'recycle');
       setB('badge-trash', 'trash'); setB('badge-gc', 'gc');
+      setB('badge-ukca', 'ukca'); setB('badge-nom', 'nom'); setB('badge-paper', 'paper');
     }
     if (rec.barcode && rec.barcode.format && rec.barcode.value) {
       const bf = $('barcode-format'), bv = $('barcode-value'), be = $('barcode-enabled');
@@ -1273,6 +1371,9 @@ function drawComplianceBlock(parts, layout, px, off) {
   if (bl.recycle) badges.push('recycle');
   if (bl.trash) badges.push('trash');
   if (bl.gc) badges.push('gc');
+  if (bl.ukca) badges.push('ukca');
+  if (bl.nom) badges.push('nom');
+  if (bl.paper) badges.push('paper');
   if (!rows.length && !badges.length) return;
 
   const bx = px(p.x) + off + px(5);
@@ -1354,6 +1455,25 @@ function drawBadge(parts, type, cx, cy, d) {
     // 海湾认证 GC（圆角方块 + GC）
     parts.push(`<rect x="${cx - r}" y="${cy - r}" width="${d}" height="${d}" rx="${r * 0.28}" fill="none" stroke="#1f2630" stroke-width="${d * 0.08}"/>`);
     parts.push(`<text x="${cx}" y="${cy + d * 0.3}" text-anchor="middle" font-size="${d * 0.52}" font-weight="bold" fill="#1f2630">GC</text>`);
+  } else if (type === 'ukca') {
+    // 英国 UKCA（椭圆 + 内框 + 文字）
+    parts.push(`<ellipse cx="${cx}" cy="${cy}" rx="${r * 0.82}" ry="${r}" fill="none" stroke="#1f2630" stroke-width="${Math.max(1, d * 0.06)}"/>`);
+    parts.push(`<ellipse cx="${cx}" cy="${cy}" rx="${r * 0.58}" ry="${r * 0.74}" fill="none" stroke="#1f2630" stroke-width="${Math.max(1, d * 0.05)}"/>`);
+    parts.push(`<text x="${cx}" y="${cy + d * 0.22}" text-anchor="middle" font-size="${d * 0.34}" font-weight="bold" fill="#1f2630">UK</text>`);
+    parts.push(`<text x="${cx}" y="${cy + d * 0.44}" text-anchor="middle" font-size="${d * 0.3}" font-weight="bold" fill="#1f2630">CA</text>`);
+  } else if (type === 'nom') {
+    // 墨西哥 NOM（圆 + 三弧线 + NOM 文字）
+    parts.push(`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#1f2630" stroke-width="${Math.max(1, d * 0.06)}"/>`);
+    for (let i = 0; i < 3; i++) {
+      const a0 = (i * 120 + 20) * Math.PI / 180, a1 = (i * 120 + 110) * Math.PI / 180;
+      parts.push(`<path d="M ${cx + r * 0.72 * Math.cos(a0)} ${cy + r * 0.72 * Math.sin(a0)} A ${r * 0.72} ${r * 0.72} 0 0 1 ${cx + r * 0.72 * Math.cos(a1)} ${cy + r * 0.72 * Math.sin(a1)}" fill="none" stroke="#1f2630" stroke-width="${Math.max(1, d * 0.05)}"/>`);
+    }
+    parts.push(`<text x="${cx}" y="${cy + d * 0.3}" text-anchor="middle" font-size="${d * 0.42}" font-weight="bold" fill="#1f2630">NOM</text>`);
+  } else if (type === 'paper') {
+    // 纸类回收（绿色双箭头回环）
+    parts.push(`<circle cx="${cx}" cy="${cy}" r="${r}" fill="#009639"/>`);
+    parts.push(`<path d="M ${cx - r * 0.4} ${cy + r * 0.3} A ${r * 0.5} ${r * 0.5} 0 1 1 ${cx + r * 0.45} ${cy - r * 0.2}" fill="none" stroke="#ffffff" stroke-width="${d * 0.1}" stroke-linecap="round"/>`);
+    parts.push(`<path d="M ${cx + r * 0.45} ${cy - r * 0.2} L ${cx + r * 0.65} ${cy - r * 0.2} L ${cx + r * 0.45} ${cy - r * 0.45} Z" fill="#ffffff"/>`);
   }
 }
 
@@ -1394,6 +1514,37 @@ function buildSvg(scale, opts = {}) {
   const parts = [];
   parts.push(`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" font-family="Microsoft YaHei, sans-serif">`);
   parts.push(`<rect x="0" y="0" width="${W}" height="${H}" fill="${TC.bg}"/>`);
+
+  // v0.7.0：版面装饰渐变 defs（跟随模板 bgGrad 配置；仅当套版开启装饰时注入）
+  const tpl2 = (state.layout && LAYOUT_TEMPLATES[state.layout.template]) || null;
+  const decoBg = !!tpl2 && !!tpl2.bgGrad && state.layout.decoBg !== false && !!(state.layout.brand || state.layout.logo);
+  if (decoBg) {
+    const ang = tpl2.bgGrad.angle || 160;
+    parts.push(`<linearGradient id="layGrad" x1="0" y1="0" x2="1" y2="1" gradientTransform="rotate(${ang} 0.5 0.5)">` +
+      `<stop offset="0" stop-color="${tpl2.bgGrad.from}"/>` +
+      `<stop offset="1" stop-color="${tpl2.bgGrad.to}"/>` +
+      `</linearGradient>`);
+  }
+
+  // v0.7.0：front 面板装饰背景（渐变铺满含出血 + 品牌条下沿斜切装饰带）
+  if (decoBg) {
+    const fp = layout.panels.find((p) => p.id === layout.panel);
+    if (fp) {
+      const fpx = px(fp.x) + off, fpy = px(fp.y) + off, fpw = px(fp.w), fph = px(fp.h);
+      // 渐变背景延伸到出血区（P2-7：出血区只放底色/延伸图文，符合印刷规范）
+      parts.push(`<rect x="${fpx - off}" y="${fpy - off}" width="${fpw + off * 2}" height="${fph + off * 2}" fill="url(#layGrad)"/>`);
+      // 斜切装饰带（品牌条下方，平行四边形色带）
+      const slants = tpl2.slant || [];
+      const bh = tpl2.brandBar ? tpl2.brandBar.hMm : 12;
+      const sh = Math.min(7, bh * 0.62); // 斜切带高度
+      const sw = fpw * 0.4;
+      slants.forEach((c, i) => {
+        const sx = fpx - off + i * sw * 0.7;
+        const sy = fpy + bh - sh * 0.5;
+        parts.push(`<path d="M ${sx} ${sy + sh} L ${sx + sw} ${sy} L ${sx + sw + sh * 0.6} ${sy + sh} L ${sx + sh * 0.6} ${sy + sh} Z" fill="${c}" opacity="0.85"/>`);
+      });
+    }
+  }
 
   // 工艺预览渐变 defs（仅预览注入；导出不含）
   if (proc !== 'none') {
@@ -1486,6 +1637,19 @@ function buildSvg(scale, opts = {}) {
       if (label) {
         parts.push(`<text x="${x + w / 2}" y="${y + h / 2 + 4}" text-anchor="middle" font-size="13" fill="${TC.label}">${label}</text>`);
       }
+    }
+  }
+
+  // v0.7.0：开窗盒顶部提手（top 面板半圆挖孔，站立展示盒挂墙用）
+  if (layout.handle && layout.handle.on) {
+    const hp = layout.panels.find((p) => p.id === 'top');
+    if (hp) {
+      const hw = px(layout.handle.w), hh = px(layout.handle.h);
+      const hx = px(hp.x) + off + px(hp.w) * (layout.handle.x / 100) - hw / 2;
+      const hy = px(hp.y) + off;
+      // 挖孔：背景色半圆（视觉上"挖掉"）+ 虚线轮廓标注（模切示意）
+      parts.push(`<path d="M ${hx} ${hy + hh} A ${hw / 2} ${hh} 0 0 1 ${hx + hw} ${hy + hh} L ${hx + hw} ${hy + hh} Z" fill="${TC.bg}"/>`);
+      parts.push(`<path d="M ${hx} ${hy + hh} A ${hw / 2} ${hh} 0 0 1 ${hx + hw} ${hy + hh}" fill="none" stroke="${dieSpot ? DIE_COLOR : '#c0392b'}" stroke-width="1.2" stroke-dasharray="5 3"/>`);
     }
   }
 
