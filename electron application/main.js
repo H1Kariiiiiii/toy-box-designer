@@ -787,6 +787,7 @@ function createWindow() {
         };
 
         // 方案库 IPC 往返 + 批量 UI
+        step('scheme');
         const fakeScheme = await window.api.saveScheme({ kind: 'test', prompt: '冒烟测试', seed: '', boxType: 'tianDiGai', boxSize: { w: 200, d: 130, h: 60 }, images: [] });
         await window.__app.loadSchemes(); // 模拟 app.js saveScheme 包装后的刷新
         await new Promise(r => setTimeout(r, 300));
@@ -852,15 +853,24 @@ function createWindow() {
         };
         // 教程页：页签存在、切换生效、7 张截图资源可加载
         out.help = await (async () => {
+          step('help');
           const tab = document.querySelector('.tab[data-page="help"]');
           document.querySelector('.tab[data-page="help"]').click();
           const active = document.getElementById('page-help').classList.contains('active');
           const imgs = [...document.querySelectorAll('#page-help img')];
           const names = ['design', 'preview', 'box', 'compliance', 'qc', 'history', 'settings'];
+          // 图片加载监听 + 强制 eager + 超时兜底：
+          // 1) lazy 图片在隐藏页签不加载，激活瞬间开始下载；若 onload 在挂监听前已派发（本地文件毫秒级）事件永不触发；
+          // 2) 先置 loading='eager' 确保浏览器立即开始加载，再挂监听（同一同步块内，事件不会早于监听）；
+          // 3) 3s 超时按当前状态兜底，防测试挂死（图片加载失败则 loaded=false，由断言暴露而非挂起）。
           const loaded = await Promise.all(imgs.map((i) => new Promise((res) => {
+            i.loading = 'eager';
             if (i.complete && i.naturalWidth > 0) return res(true);
-            i.onload = () => res(i.naturalWidth > 0);
-            i.onerror = () => res(false);
+            let done = false;
+            const settle = (v) => { if (!done) { done = true; res(v); } };
+            i.onload = () => settle(i.naturalWidth > 0);
+            i.onerror = () => settle(false);
+            setTimeout(() => settle(!!(i.complete && i.naturalWidth > 0)), 3000);
           })));
           const haveAll = names.every((n) => imgs.some((i) => i.getAttribute('src').includes(n + '.png')));
           const faqCount = document.querySelectorAll('#page-help details').length;
@@ -1541,7 +1551,8 @@ function createWindow() {
           const svg = window.__app.buildSvg(300 / 25.4, { bleed: 3 });
           const t = window.__app.state.templates[window.__app.state.currentType];
           const layout = t.build({ w: 200, d: 130, h: 60 });
-          const res = await window.api.exportPdfX({
+          // PDF/X 导出链路（真实 Ghostscript 转换）
+        const res = await window.api.exportPdfX({
             svg,
             widthMm: layout.width + 6,
             heightMm: layout.height + 6,
