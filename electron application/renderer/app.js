@@ -237,6 +237,7 @@ async function init() {  const cfg = await window.api.getConfig();
   $('btn-batch').addEventListener('click', batchGenerate);
   $('btn-export').addEventListener('click', exportPng);
   $('btn-pdfx').addEventListener('click', exportPdfX);
+  $('btn-layers').addEventListener('click', exportLayers);
   $('btn-saveConfig').addEventListener('click', saveConfig);
   ['size-w', 'size-d', 'size-h'].forEach((id) => {
     $(id).addEventListener('input', () => { renderLayout(); updateQuickStatus(); updateBoxSizeText(); });
@@ -453,6 +454,8 @@ async function checkGs() {
       el.textContent = '✓ PDF/X 引擎就绪';
       el.className = 'gs-status ok';
       $('btn-pdfx').disabled = false;
+      const bl = $('btn-layers');
+      if (bl) bl.disabled = false; // 分层素材包不依赖 GS，但跟随就绪状态一起启用
     } else {
       el.textContent = st.available ? '✗ 缺 CMYK ICC 配置' : '✗ 缺 Ghostscript 引擎';
       el.className = 'gs-status err';
@@ -799,6 +802,8 @@ async function generate(reroll) {
     renderResults();
     renderLayout();
     $('btn-export').disabled = false;
+    const bl1 = $('btn-layers');
+    if (bl1) bl1.disabled = false;
     status.textContent = `✅ 已生成 ${res.images.length} 张，当前应用第 1 张（点缩略图切换）` + (seed !== '' ? `（seed=${seed}）` : '');
     status.className = 'status ok';
     saveScheme('single', res.images, seed === '' ? undefined : seed);
@@ -848,6 +853,8 @@ async function batchGenerate() {
     renderResults();
     renderLayout();
     $('btn-export').disabled = false;
+    const blb = $('btn-layers');
+    if (blb) blb.disabled = false;
     status.textContent = `✅ 批量完成：${n} 个方案（Seed ${baseSeed}~${baseSeed + n - 1}），点缩略图切换方案`;
     status.className = 'status ok';
     for (const s of schemes) await saveScheme('batch', s.images, s.seed);
@@ -862,6 +869,8 @@ async function batchGenerate() {
       renderResults();
       renderLayout();
       $('btn-export').disabled = false;
+      const blc = $('btn-layers');
+      if (blc) blc.disabled = false;
       for (const s of schemes) await saveScheme('batch', s.images, s.seed);
       status.textContent = `⚠ 批量部分完成：${schemes.length}/${n} 个方案已保留（第 ${schemes.length + 1} 个失败：${err.message}）`;
       status.className = 'status';
@@ -1116,7 +1125,11 @@ async function loadScheme(rec) {
     }
     renderResults();
     renderLayout();
-    if (images.length) $('btn-export').disabled = false; // 载入有图方案即可导出（首用用户直接载入历史方案也可导出）
+    if (images.length) {
+      $('btn-export').disabled = false;
+      const bld = $('btn-layers');
+      if (bld) bld.disabled = false; // 载入有图方案即可导出（首用用户直接载入历史方案也可导出）
+    }
     status.textContent = '✅ 已载入历史方案（可直接导出/继续编辑）';
     status.className = 'status ok';
   } catch (err) {
@@ -1503,6 +1516,16 @@ function buildSvg(scale, opts = {}) {
   // 折线/出血框保持橙色虚线（线型区分刀线/折线）。屏幕预览（PNG）保持原配色。
   const dieSpot = !!opts.dieSpot;
   const DIE_COLOR = '#ff00ff'; // 100% Magenta，模切专色约定
+  // v0.8.0：分层导出（配合 Photoshop 精修）——
+  //   layer: undefined=完整图（现状）| 'main'=主视觉+套版+装饰 | 'die'=刀线/折线/出血框/提手 | 'compliance'=合规块 | 'barcode'=条码
+  //   transparent=true：背景/面板底色透明（分层 PNG 用，方便在 PS 中叠加）
+  const layer = opts.layer || null;
+  const transparent = !!opts.transparent;
+  const layerMode = layer || 'full';
+  const inMain = layerMode === 'full' || layerMode === 'main';
+  const inDie = layerMode === 'full' || layerMode === 'die';
+  const inComp = layerMode === 'full' || layerMode === 'compliance';
+  const inBar = layerMode === 'full' || layerMode === 'barcode';
   const t = state.templates[state.currentType];
   const layout = t.build(getSize());
   const px = (v) => v * scale;
@@ -1513,7 +1536,7 @@ function buildSvg(scale, opts = {}) {
 
   const parts = [];
   parts.push(`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" font-family="Microsoft YaHei, sans-serif">`);
-  parts.push(`<rect x="0" y="0" width="${W}" height="${H}" fill="${TC.bg}"/>`);
+  if (!transparent) parts.push(`<rect x="0" y="0" width="${W}" height="${H}" fill="${TC.bg}"/>`);
 
   // v0.7.0：版面装饰渐变 defs（跟随模板 bgGrad 配置；仅当套版开启装饰时注入）
   const tpl2 = (state.layout && LAYOUT_TEMPLATES[state.layout.template]) || null;
@@ -1526,8 +1549,8 @@ function buildSvg(scale, opts = {}) {
       `</linearGradient>`);
   }
 
-  // v0.7.0：front 面板装饰背景（渐变铺满含出血 + 品牌条下沿斜切装饰带）
-  if (decoBg) {
+  // v0.7.0：front 面板装饰背景（渐变铺满含出血 + 品牌条下沿斜切装饰带）——归 main 层
+  if (decoBg && inMain) {
     const fp = layout.panels.find((p) => p.id === layout.panel);
     if (fp) {
       const fpx = px(fp.x) + off, fpy = px(fp.y) + off, fpw = px(fp.w), fph = px(fp.h);
@@ -1581,6 +1604,43 @@ function buildSvg(scale, opts = {}) {
 
   for (const p of layout.panels) {
     const x = px(p.x) + off, y = px(p.y) + off, w = px(p.w), h = px(p.h);
+    // v0.8.0 分层模式：die 层只画面板轮廓描边+折线；main 层只画 face 主视觉图；
+    // compliance/barcode 层不画面板（透明）；完整模式保持现状
+    if (layerMode === 'die') {
+      const stroke = dieSpot ? DIE_COLOR : TC.panelStroke;
+      let sw = 1.6;
+      if (p.kind === 'window') sw = 2;
+      if (p.kind === 'window' && p.shape === 'custom' && Array.isArray(state.boxWin.custom) && state.boxWin.custom.length > 2) {
+        const cpts = (state.boxWin.custom || []).map((pt) => ({ x: x + (pt.x / 100) * w, y: y + (pt.y / 100) * h }));
+        parts.push(`<path d="${smoothPath(cpts)} Z" fill="none" stroke="${stroke}" stroke-width="${sw}"/>`);
+      } else if (p.kind === 'window' && (p.shape === 'ellipse' || p.shape === 'circle')) {
+        const rr = p.shape === 'circle' ? Math.min(w, h) / 2 : 0;
+        parts.push(`<ellipse cx="${x + w / 2}" cy="${y + h / 2}" rx="${p.shape === 'circle' ? rr : w / 2}" ry="${p.shape === 'circle' ? rr : h / 2}" fill="none" stroke="${stroke}" stroke-width="${sw}"/>`);
+      } else {
+        const rx = p.kind === 'window' && p.shape === 'round' ? Math.min(w, h) * 0.18 : 0;
+        parts.push(`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${rx}" fill="none" stroke="${stroke}" stroke-width="${sw}"/>`);
+      }
+      // 折线（虚线）
+      if (p.foldEdges) {
+        for (const edge of p.foldEdges) {
+          let line = '';
+          if (edge === 'top') line = `<line x1="${x}" y1="${y}" x2="${x + w}" y2="${y}"/>`;
+          if (edge === 'bottom') line = `<line x1="${x}" y1="${y + h}" x2="${x + w}" y2="${y + h}"/>`;
+          if (edge === 'left') line = `<line x1="${x}" y1="${y}" x2="${x}" y2="${y + h}"/>`;
+          if (edge === 'right') line = `<line x1="${x + w}" y1="${y}" x2="${x + w}" y2="${y + h}"/>`;
+          if (line) parts.push(line.replace('<line ', '<line stroke="#ff8c4f" stroke-width="1.8" stroke-dasharray="7 5" '));
+        }
+      }
+      continue;
+    }
+    if (layerMode === 'main') {
+      // 只画主视觉图（含开窗盒 front 面板的图；透明底，无面板底/描边）
+      if (p.kind === 'face' && state.currentImage) {
+        parts.push(`<image x="${x}" y="${y}" width="${w}" height="${h}" preserveAspectRatio="xMidYMid slice" href="${state.currentImage}"/>`);
+      }
+      continue;
+    }
+    if (layerMode !== 'full') continue; // compliance/barcode 层：不画面板
     let fill = TC.panelFill;
     // 刀线颜色：dieSpot（印刷稿）用 100% Magenta 专色约定；预览/PNG 用主题色
     let stroke = dieSpot ? DIE_COLOR : TC.panelStroke;
@@ -1640,22 +1700,22 @@ function buildSvg(scale, opts = {}) {
     }
   }
 
-  // v0.7.0：开窗盒顶部提手（top 面板半圆挖孔，站立展示盒挂墙用）
-  if (layout.handle && layout.handle.on) {
+  // v0.7.0：开窗盒顶部提手（top 面板半圆挖孔，站立展示盒挂墙用）——归 die 层
+  if (layout.handle && layout.handle.on && inDie) {
     const hp = layout.panels.find((p) => p.id === 'top');
     if (hp) {
       const hw = px(layout.handle.w), hh = px(layout.handle.h);
       const hx = px(hp.x) + off + px(hp.w) * (layout.handle.x / 100) - hw / 2;
       const hy = px(hp.y) + off;
       // 挖孔：背景色半圆（视觉上"挖掉"）+ 虚线轮廓标注（模切示意）
-      parts.push(`<path d="M ${hx} ${hy + hh} A ${hw / 2} ${hh} 0 0 1 ${hx + hw} ${hy + hh} L ${hx + hw} ${hy + hh} Z" fill="${TC.bg}"/>`);
+      parts.push(`<path d="M ${hx} ${hy + hh} A ${hw / 2} ${hh} 0 0 1 ${hx + hw} ${hy + hh} L ${hx + hw} ${hy + hh} Z" fill="${transparent ? 'none' : TC.bg}"/>`);
       parts.push(`<path d="M ${hx} ${hy + hh} A ${hw / 2} ${hh} 0 0 1 ${hx + hw} ${hy + hh}" fill="none" stroke="${dieSpot ? DIE_COLOR : '#c0392b'}" stroke-width="1.2" stroke-dasharray="5 3"/>`);
     }
   }
 
   // 条码叠加到模板指定的条码面板（白底 + 缩放适配；与合规块同面板时下移避让；支持自定义大小/位置）
-  // 版面套版区块（正面 + 背板；填内容即套版；网格自动配图）
-  if (state.layout && (state.layout.brand || state.layout.product || state.layout.series || state.layout.sellTitle || (state.layout.gridItems && state.layout.gridItems.length))) {
+  // 版面套版区块（正面 + 背板；填内容即套版；网格自动配图）——归 main 层
+  if (inMain && state.layout && (state.layout.brand || state.layout.product || state.layout.series || state.layout.sellTitle || (state.layout.gridItems && state.layout.gridItems.length))) {
     const tpl = LAYOUT_TEMPLATES[state.layout.template] || LAYOUT_TEMPLATES.farm;
     const imgs = (state.generatedImages || []).map((g) => (g && g.dataUrl) || null);
     const fp = layout.panels.find((p) => p.id === layout.panel);
@@ -1675,7 +1735,7 @@ function buildSvg(scale, opts = {}) {
       }
     }
   }
-  if (state.barcode && layout.barcodePanel) {
+  if (inBar && state.barcode && layout.barcodePanel) {
     const bp = layout.panels.find((p) => p.id === layout.barcodePanel);
     if (bp) {
       const bar = makeBarcode(state.barcode.format, state.barcode.value);
@@ -1728,16 +1788,16 @@ function buildSvg(scale, opts = {}) {
     }
   }
 
-  // 合规信息块（排在最上层）
-  drawComplianceBlock(parts, layout, px, off);
+  // 合规信息块（排在最上层）——归 compliance 层
+  if (inComp) drawComplianceBlock(parts, layout, px, off);
 
-  // 出血：成品线（虚线框）示意
-  if (bleed > 0) {
+  // 出血：成品线（虚线框）示意——归 die 层
+  if (bleed > 0 && inDie) {
     parts.push(`<rect x="${off}" y="${off}" width="${px(layout.width)}" height="${px(layout.height)}" fill="none" stroke="#ff8c4f" stroke-width="2" stroke-dasharray="10 6"/>`);
   }
 
-  // 总尺寸标注（放在展开图下方独立标注区，不遮挡刀模图）
-  if (showLabel) {
+  // 总尺寸标注（放在展开图下方独立标注区，不遮挡刀模图）——分层导出不含
+  if (showLabel && layerMode === 'full') {
     const s = getSize();
     const bleedNote = bleed > 0 ? `（含 ${bleed}mm 出血）` : '';
     parts.push(
@@ -2554,6 +2614,88 @@ async function exportPng() {
     status.className = 'status err';
   } finally {
     URL.revokeObjectURL(svgUrl);
+  }
+}
+
+/* ================= 导出分层素材包（v0.8.0：配合 Photoshop 精修） ================= */
+/** SVG → 透明 PNG dataURL（Blob 加载，canvas 不填充背景） */
+function svgToPngDataUrl(svgText) {
+  const svgUrl = URL.createObjectURL(new Blob([svgText], { type: 'image/svg+xml' }));
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height); // 透明背景
+      ctx.drawImage(img, 0, 0);
+      URL.revokeObjectURL(svgUrl);
+      resolve(canvas.toDataURL('image/png'));
+    };
+    img.onerror = () => { URL.revokeObjectURL(svgUrl); reject(new Error('SVG 渲染失败')); };
+    img.src = svgUrl;
+  });
+}
+
+/**
+ * 导出分层素材包：主视觉/刀线/合规/条码 各一张透明 PNG + 说明.json（mm 坐标），
+ * 供设计师在 Photoshop 中按坐标叠加后自由精修（文字/条码/主视觉可单独编辑）。
+ * 各层内容：
+ *   main.png        主视觉图 + 版面套版 + 装饰背景（透明底）
+ *   die.png         刀线（100% Magenta 专色约定）+ 折线 + 出血框 + 提手（透明底）
+ *   compliance.png  合规信息块 + 认证标志（透明底）
+ *   barcode.png     条码（含白底）（透明底）
+ */
+async function exportLayers() {
+  const status = $('gen-status');
+  const t = state.templates[state.currentType];
+  const layout = t.build(getSize());
+  const scale = 300 / 25.4;
+  const bleed = 3; // 素材包含 3mm 出血（与印刷稿一致，PS 中按画布尺寸建立即可）
+  const base = { bleed, showLabel: false, transparent: true };
+  status.textContent = '🕐 正在生成分层素材包（4 层 PNG）…';
+  status.className = 'status';
+  try {
+    const [mainPng, diePng, compPng, barPng] = await Promise.all([
+      svgToPngDataUrl(buildSvg(scale, Object.assign({}, base, { layer: 'main' }))),
+      svgToPngDataUrl(buildSvg(scale, Object.assign({}, base, { layer: 'die', dieSpot: true }))),
+      svgToPngDataUrl(buildSvg(scale, Object.assign({}, base, { layer: 'compliance' }))),
+      svgToPngDataUrl(buildSvg(scale, Object.assign({}, base, { layer: 'barcode' }))),
+    ]);
+    const panel = (id) => layout.panels.find((p) => p.id === id);
+    const fp = panel(layout.panel), cp = panel(layout.compliancePanel), bp = panel(layout.barcodePanel);
+    const meta = {
+      app: 'toy-box-designer',
+      format: 1,
+      version: '0.8.0',
+      desc: '分层素材包：在 Photoshop 中按各层 mm 坐标摆放（画布尺寸 = canvas.widthMm × canvas.heightMm @300dpi），可单独编辑各层。',
+      boxType: state.currentType,
+      boxSize: getSize(),
+      dpi: 300,
+      bleedMm: bleed,
+      canvas: { widthMm: layout.width + bleed * 2, heightMm: layout.height + bleed * 2 },
+      layers: {
+        main: fp ? { file: 'main.png', xMm: fp.x + bleed, yMm: fp.y + bleed, wMm: fp.w, hMm: fp.h, desc: '主视觉+套版+装饰（透明底，编辑用）' } : null,
+        die: { file: 'die.png', xMm: 0, yMm: 0, wMm: layout.width + bleed * 2, hMm: layout.height + bleed * 2, desc: '刀线（100% Magenta 约定专色）+折线+出血框+提手（模切版）' },
+        compliance: cp ? { file: 'compliance.png', xMm: cp.x + bleed, yMm: cp.y + bleed, wMm: cp.w, hMm: cp.h, desc: '合规信息块+认证标志（透明底）' } : null,
+        barcode: bp ? { file: 'barcode.png', xMm: bp.x + bleed, yMm: bp.y + bleed, wMm: bp.w, hMm: bp.h, desc: '条码（含白底，透明底）' } : null,
+      },
+    };
+    const res = await window.api.exportLayers({
+      layers: [
+        { name: 'main.png', dataUrl: mainPng },
+        { name: 'die.png', dataUrl: diePng },
+        { name: 'compliance.png', dataUrl: compPng },
+        { name: 'barcode.png', dataUrl: barPng },
+      ],
+      meta,
+    });
+    status.textContent = res.saved ? `✅ 分层素材包已导出：${res.dir}` : '已取消导出';
+    status.className = res.saved ? 'status ok' : 'status';
+  } catch (err) {
+    status.textContent = '❌ 分层导出失败：' + err.message;
+    status.className = 'status err';
   }
 }
 

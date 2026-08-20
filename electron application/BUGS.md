@@ -1,7 +1,16 @@
 # Bug 清单（测试驱动修复记录）
 
-> 来源：`SMOKE` 测试（多批次 / 112 个硬断言，见 `main.js`），每次打包自动回归；任何断言失败将导致 `app.exit(1)`（红牌退出）。
-> 验证基线：开发版 + 打包版均 **112/112 断言通过**、零 JS 错误。
+> 来源：`SMOKE` 测试（多批次 / 118 个硬断言，见 `main.js`），每次打包自动回归；任何断言失败将导致 `app.exit(1)`（红牌退出）。
+> 验证基线：开发版 + 打包版均 **118/118 断言通过**、零 JS 错误。
+
+---
+
+## v0.8.0（2026-08-19，Photoshop 配合工作流：导出分层素材包）
+
+| # | 严重度 | 描述 | 修复 |
+|---|--------|------|------|
+| — | — | **新功能（配合 PS 精修）**：`buildSvg` 支持 `layer`（main/die/compliance/barcode 四层分离）+ `transparent`（透明底）；新增「📦 导出分层素材包」——4 张透明 PNG + `说明.json`（各层 mm 坐标/画布尺寸/出血），PS 中按坐标叠加可单独编辑每层；`layers:export` IPC 带文件名白名单 + dataUrl 校验（防恶意写入）；SMOKE +6 断言（分层渲染隔离性 + IPC 往返） | `renderer/app.js`/`main.js`/`preload.js`/`index.html` |
+| BUG-74 | 低 | **SMOKE 注入脚本误用 Node API**：分层导出测试在 renderer 上下文用了 `path`/`fs`（executeJavaScript 无 Node 模块）→ `path is not defined`；另 `out.layersExport` 未 await 导致 Promise 无法结构化克隆 | 目录准备移到主进程侧（模板注入路径）；测试改为 `await` 后收集结果 |
 
 ---
 

@@ -258,6 +258,10 @@ function createWindow() {
       // 恶意方案文件：images 携带本地/UNC 路径（安全修复回归测试用）
       const evilPath = path.join(app.getPath('temp'), 'toybox_evil.toybox.json');
       fs.writeFileSync(evilPath, JSON.stringify({ app: 'toy-box-designer', format: 1, scheme: { kind: 'import', prompt: 'evil', boxType: 'tianDiGai', images: ['C:\\Windows\\win.ini', '\\\\evil\\share\\x.png'] } }));
+      // v0.8.0：分层素材包导出测试准备（目标目录）
+      const layersDir = path.join(app.getPath('temp'), 'toybox_layers_smoke');
+      try { fs.rmSync(layersDir, { recursive: true, force: true }); } catch (e) { /* ignore */ }
+      fs.mkdirSync(layersDir, { recursive: true });
       if (process.env.SMOKE_BARCODE) {
         // 条码专项诊断
         const diag = await mainWindow.webContents.executeJavaScript(`(() => {
@@ -545,6 +549,23 @@ function createWindow() {
             app.state.boxWin = { wPct: 55, hPct: 60, xPct: 22.5, yPct: 8, shape: 'rect', handle: { on: false, w: 22, h: 11, x: 50 } };
             app.selectBoxType('tianDiGai');
             app.renderLayout();
+            // ===== v0.8.0：分层素材包渲染（main/die/compliance/barcode 四层分离） =====
+            app.state.compAuto = true;
+            app.state.compFields = Object.assign({}, app.state.compFields, { name: '恐龙积木', sku: 'T-1001', material: 'ABS 塑料', standard: 'GB 6675', maker: '澄海玩具厂', warning: '适合 3 岁以上' });
+            app.state.markets = new Set(['eu']); // CE 标志
+            app.state.barcode = { format: 'EAN13', value: '6901234567892' };
+            app.state.currentImage = app.state.generatedImages && app.state.generatedImages[0] ? app.state.generatedImages[0].dataUrl : null;
+            if (!app.state.currentImage) { app.state.currentImage = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='; }
+            const layMain = app.buildSvg(2, { bleed: 3, showLabel: false, transparent: true, layer: 'main' });
+            const layDie = app.buildSvg(2, { bleed: 3, showLabel: false, transparent: true, layer: 'die', dieSpot: true });
+            const layComp = app.buildSvg(2, { bleed: 3, showLabel: false, transparent: true, layer: 'compliance' });
+            const layBar = app.buildSvg(2, { bleed: 3, showLabel: false, transparent: true, layer: 'barcode' });
+            const hasLayMain = layMain.indexOf('url(#layGrad)') >= 0 || layMain.indexOf('FARM') >= 0 || layMain.indexOf('<image') >= 0; // 装饰/套版/主视觉之一
+            const hasLayDie = layDie.indexOf('#ff00ff') >= 0 && layDie.indexOf('stroke-dasharray') >= 0; // 专色刀线+折线/出血
+            const hasLayComp = layComp.indexOf('品名') >= 0 || layComp.indexOf('恐龙') >= 0 || layComp.indexOf('CE') >= 0; // 合规块内容
+            const hasLayBar = layBar.indexOf('<g transform') >= 0 || layBar.indexOf('6901234567892') >= 0; // 条码
+            const layIsolated = layMain.indexOf('stroke-dasharray="10 6"') < 0 && layDie.indexOf('<image') < 0; // main 无出血虚线、die 无主视觉图
+            app.renderLayout();
             return {
               hasBrand: html.indexOf('FARM') >= 0 && html.indexOf('#1c1c1c') >= 0,
               hasSell: html.indexOf('Push!') >= 0 && html.indexOf('To power and go') >= 0,
@@ -577,6 +598,8 @@ function createWindow() {
               svgLen: html.length,
               // v0.7.0
               hasBgGrad, hasSlant, decoOffOk, logoBarIsImage, hasBadges, hasUkca, hasNom, hasPaper, hasHandle,
+              // v0.8.0：分层素材包
+              hasLayMain, hasLayDie, hasLayComp, hasLayBar, layIsolated,
             };
           } catch (e) { return 'ERR: ' + e.message; }
         })();
@@ -813,6 +836,28 @@ function createWindow() {
           seedPreserved: impR.imported ? impR.scheme.seed === '42' : false,
         };
         if (impR.imported) await window.api.deleteScheme(impR.scheme.id); // 测试后清理
+
+        // v0.8.0：分层素材包导出往返（写 temp 目录 → 检查 4 张 PNG + 白名单拒绝）
+        out.layersExport = await (async () => {
+          const tinyPng = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+          try {
+            const r = await window.api.exportLayers({
+              forcePath: ${JSON.stringify(layersDir)},
+              layers: [
+                { name: 'main.png', dataUrl: tinyPng },
+                { name: 'die.png', dataUrl: tinyPng },
+                { name: 'compliance.png', dataUrl: tinyPng },
+                { name: 'barcode.png', dataUrl: tinyPng },
+                { name: 'evil.php', dataUrl: tinyPng }, // 白名单外文件名应被拒绝
+              ],
+              meta: { boxType: 'tianDiGai', canvas: { widthMm: 350, heightMm: 580 } },
+            });
+            const files = r.saved && r.written ? r.written : [];
+            return { ok: r.saved === true && files.length === 4 && files.includes('main.png') && !files.includes('evil.php'), files };
+          } catch (e) {
+            return { ok: false, err: e.message };
+          }
+        })();
 
         // 图片尺寸：比例 × 清晰度 计算 + 旧配置推断
         out.sizeCalc = {
@@ -1705,6 +1750,14 @@ function createWindow() {
       sa('layoutTpl.hasNom', dom.layoutTpl && dom.layoutTpl.hasNom === true);
       sa('layoutTpl.hasPaper', dom.layoutTpl && dom.layoutTpl.hasPaper === true);
       sa('layoutTpl.hasHandle', dom.layoutTpl && dom.layoutTpl.hasHandle === true);
+      // v0.8.0：分层素材包渲染
+      sa('layoutTpl.hasLayMain', dom.layoutTpl && dom.layoutTpl.hasLayMain === true);
+      sa('layoutTpl.hasLayDie', dom.layoutTpl && dom.layoutTpl.hasLayDie === true);
+      sa('layoutTpl.hasLayComp', dom.layoutTpl && dom.layoutTpl.hasLayComp === true);
+      sa('layoutTpl.hasLayBar', dom.layoutTpl && dom.layoutTpl.hasLayBar === true);
+      sa('layoutTpl.layIsolated', dom.layoutTpl && dom.layoutTpl.layIsolated === true);
+      // v0.8.0：分层素材包导出往返（4 层写入 + 白名单拒绝）
+      sa('layersExport.ok', dom.layersExport && dom.layersExport.ok === true);
       // 主进程侧：水印请求参数构造（lib/imgRequest.js 三态；buildImageRequest 已由顶部 require）
       {
         const wmBase = { model: 'm', prompt: 'p', size: '1K' };
@@ -1865,6 +1918,44 @@ ipcMain.handle('file:save', async (_e, { defaultName, dataBase64 }) => {
 /* ---------------- PDF/X 印刷稿 ---------------- */
 ipcMain.handle('gs:status', () => gsStatus());
 ipcMain.handle('pdf:export', (_e, opts) => exportPdfX(opts));
+
+/* ---------------- 分层素材包导出（v0.8.0：配合 Photoshop 精修） ---------------- */
+// 各层透明 PNG + 说明.json 写入用户选择的目录；文件名白名单 + dataUrl 校验防恶意写入
+const LAYER_FILES = new Set(['main.png', 'die.png', 'compliance.png', 'barcode.png']);
+ipcMain.handle('layers:export', async (_e, payload) => {
+  const p = (payload && typeof payload === 'object') ? payload : {};
+  const layers = Array.isArray(p.layers) ? p.layers.slice(0, 8) : [];
+  const meta = (p.meta && typeof p.meta === 'object') ? p.meta : {};
+  let dir;
+  if (typeof p.forcePath === 'string' && p.forcePath) {
+    dir = p.forcePath; // SMOKE 测试直写目录（与 pdfx forcePath 一致）
+    fs.mkdirSync(dir, { recursive: true });
+  } else {
+    const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
+      title: '选择保存分层素材包的文件夹（将写入 4 张 PNG + 说明.json）',
+      buttonLabel: '保存到此文件夹',
+      properties: ['openDirectory', 'createDirectory'],
+    });
+    if (canceled || !filePaths.length) return { saved: false };
+    dir = filePaths[0];
+  }
+  const written = [];
+  for (const L of layers) {
+    const name = String(L && L.name || '');
+    if (!LAYER_FILES.has(name)) continue; // 文件名白名单
+    const d = L.dataUrl;
+    if (typeof d !== 'string' || !d.startsWith('data:image/png;base64,')) continue;
+    const b64 = d.slice('data:image/png;base64,'.length);
+    if (b64.length * 0.75 > 64 * 1024 * 1024) continue; // 单层 ≤64MB
+    fs.writeFileSync(path.join(dir, name), Buffer.from(b64, 'base64'));
+    written.push(name);
+  }
+  if (written.length) {
+    // 说明.json（含各层 mm 坐标，供 PS 摆放）
+    fs.writeFileSync(path.join(dir, '说明.json'), JSON.stringify(meta, null, 2), 'utf8');
+  }
+  return { saved: written.length > 0, dir, written };
+});
 
 /* ---------------- 历史方案库 ---------------- */
 const schemesDir = () => path.join(app.getPath('userData'), 'schemes');

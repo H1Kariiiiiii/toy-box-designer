@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld('api', {
   saveFile: (opts) => ipcRenderer.invoke('file:save', opts),
   gsStatus: () => ipcRenderer.invoke('gs:status'),
   exportPdfX: (opts) => ipcRenderer.invoke('pdf:export', opts),
+  exportLayers: (opts) => ipcRenderer.invoke('layers:export', opts),
   listSchemes: () => ipcRenderer.invoke('scheme:list'),
   saveScheme: (s) => ipcRenderer.invoke('scheme:save', s),
   updateScheme: (id, s) => ipcRenderer.invoke('scheme:update', id, s),
