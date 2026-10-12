@@ -3,7 +3,7 @@
 澄海玩具电商公司设计部专用：AI 生成玩具包装盒主视觉 + 自动贴入盒型展开图 + 条码 + 合规自查 + 300dpi/出血导出。
 桌面应用，双击即可使用。
 
-> 📋 **测试与缺陷记录**：完整 Bug 清单（73 项，全部已修复）见 [BUGS.md](BUGS.md)；SMOKE 硬断言随每次打包自动回归（失败即退出码 1）。
+> 📋 **测试与缺陷记录**：完整 Bug 清单（74 项，全部已修复）见 [BUGS.md](BUGS.md)；SMOKE 硬断言随每次打包自动回归（失败即退出码 1）。
 
 ---
 
@@ -49,7 +49,7 @@
 
 ---
 
-## 功能（v0.6.0）
+## 功能总览（持续迭代至 v0.8.0）
 
 > **v0.8.0 新增（Photoshop 配合工作流）**：
 > - 📦 **导出分层素材包**：主视觉/刀线/合规/条码 四张透明 PNG + `说明.json`（含各层 mm 坐标）——
@@ -160,7 +160,7 @@
 ### 4. 打包成安装包（给同事双击安装）
 
 双击 `build.bat`，完成后 `release/` 目录下会出现
-`ToyBoxDesigner-0.7.1-Setup.exe`，安装后桌面有快捷方式。
+`ToyBoxDesigner-0.8.0-Setup.exe`，安装后桌面有快捷方式。
 
 > 说明：MVP 阶段设置了 `signAndEditExecutable: false`——跳过 exe 图标/签名
 > 编辑（绕开 winCodeSign 在无管理员权限 Windows 上的符号链接解压 bug），
@@ -170,8 +170,10 @@
 ## 项目结构
 
 ```
-main.js               Electron 主进程（窗口 / 配置 / Seedream API / 图片格式识别 / 文件保存）
+main.js               Electron 主进程（窗口 / 配置 / Seedream API / 图片格式识别 / 文件保存 / SMOKE 回归）
 preload.js            安全桥接层
+pdfx.js               PDF/X-3 印刷稿导出（Chromium printToPDF → 内置 Ghostscript 转 PDF/X-3 + CMYK）
+lib/imgRequest.js     统一 OpenAI 兼容文生图请求构建（火山方舟 / 硅基流动 / 智谱 / OpenAI 等）
 templates/boxes.js    ★ 盒型模板库（参数化刀模 + 条码面板，核心资产）
 renderer/
   index.html          界面
@@ -180,7 +182,11 @@ renderer/
   compliance.js       合规清单数据（中国/欧盟/美国必印信息，来自法规调研）
   layoutTemplates.js  版面套版模板（9 套配色 / 区块布局 / 拖拽手柄 / SVG path 解析）
   warning-templates.js 多语言警告语模板（中英西阿法德 × 窒息/36 个月/成人监护）
+  mockup.js           3D mockup 预览（纹理旋转/镜像校正 + GPU 资源释放）
   vendor/JsBarcode.all.min.js  条码生成库
+  vendor/mockup.bundle.js      three.js + OrbitControls 打包产物（≈785KB，无 CDN 依赖）
+resources/gs/         内置 Ghostscript 10.07（约 25MB，PDF/X 转换引擎）
+build/after-pack.js   rcedit 注入 exe 图标
 start.bat             双击开发运行
 build.bat             双击打包 exe
 config.example.json   配置示例（真实配置存于 %APPDATA%/toy-box-designer/config.json）
