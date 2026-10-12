@@ -6,9 +6,15 @@ electron application/release/
 
 # ===== 第三方运行时（Ghostscript，可从官网重新下载） =====
 electron application/resources/gs/
+#   已捆绑版本：Ghostscript 10.07.1（64 位 Windows）
+#   官网：https://www.ghostscript.com/releases/gsdnld.html
+#   需要文件：gswin64c.exe + Library/lib/iccprofiles/default_cmyk.icc + official_pdfx_def.ps
+#   用途：pdfx.js 将 printToPDF 输出转为 PDF/X-3 + CMYK
+#   校验：gswin64c.exe --version 应输出 10.07.1
 
 # ===== 插件打包（签名私钥 toybox.p12 绝不可入库；ZXPSignCmd 为第三方工具） =====
 ps-plugin/build/
+ps-plugin/dist/
 
 # ===== Reasonix 工具数据/配置（剪贴板截图、任务日志、权限配置） =====
 .reasonix/
@@ -24,10 +30,8 @@ Thumbs.db
 .DS_Store
 
 # ===== 用户本地配置（含 API Key） =====
-config.json# ===== 插件打包产物（ZXP 可重建） =====
-ps-plugin/dist/
+config.json
 
-
-# ===== DSH 临时目录（SSH 密钥残留，非项目内容） =====
+# ===== DSH 临时目录（SSH 密钥残留 / 推送工具，非项目内容） =====
 .dsh-push-ssh-trash/
 .dsh-tools/
