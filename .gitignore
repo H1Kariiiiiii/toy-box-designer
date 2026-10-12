@@ -27,3 +27,7 @@ Thumbs.db
 config.json# ===== 插件打包产物（ZXP 可重建） =====
 ps-plugin/dist/
 
+
+# ===== DSH 临时目录（SSH 密钥残留，非项目内容） =====
+.dsh-push-ssh-trash/
+.dsh-tools/
